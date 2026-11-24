@@ -9,7 +9,7 @@ const TB_LS = {
 
 /* ---- Supabase (public anon key only; row-level security protects data) ---- */
 const SB_URL = 'https://dmehmqbmhpuqttsnjrey.supabase.co';
-const SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRtZWhtcWJtaHB1cXR0c25qcmV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTU1MDg0OTksImV4cCI6MjExMTA4NDQ5OX0.PAHA9I2uZt9rx-OgZmkDt-om11imdDQhV5LGtTjZxTQ';
+const SB_KEY = 'sb_publishable_-1duEagNkox3QocD199TzA_Ord5AuOx';
 const SB = {
   session() { try { return JSON.parse(TB_LS.getItem('tb_sb_v1')) || null; } catch (e) { return null; } },
   setSession(x) { if (x) TB_LS.setItem('tb_sb_v1', JSON.stringify(x)); else TB_LS.removeItem('tb_sb_v1'); },
@@ -28,7 +28,8 @@ const SB = {
   },
   async api(method, path, body, prefer) {
     const t = await SB.token();
-    const h = { apikey: SB_KEY, Authorization: 'Bearer ' + (t || SB_KEY), 'Content-Type': 'application/json' };
+    const h = { apikey: SB_KEY, 'Content-Type': 'application/json' };
+    if (t) h.Authorization = 'Bearer ' + t;
     if (prefer) h.Prefer = prefer;
     const r = await fetch(SB_URL + '/rest/v1/' + path, { method, headers: h, body: body === undefined ? undefined : JSON.stringify(body) });
     const txt = await r.text(); let j = null; try { j = txt ? JSON.parse(txt) : null; } catch (e) {}
@@ -75,7 +76,7 @@ function sbSyncProducts() {
   try {
     const x = new XMLHttpRequest();
     x.open('GET', SB_URL + '/rest/v1/products?select=*&active=eq.true&order=sort', false);
-    x.setRequestHeader('apikey', SB_KEY); x.setRequestHeader('Authorization', 'Bearer ' + SB_KEY);
+    x.setRequestHeader('apikey', SB_KEY);
     x.send();
     if (x.status === 200) { const list = JSON.parse(x.responseText); TB_LS.setItem('tb_pcache_v1', JSON.stringify({ t: Date.now(), list })); return list; }
   } catch (e) {}
