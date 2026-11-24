@@ -231,3 +231,12 @@ table.admin-table { width: 100%; border-collapse: collapse; background: #fff; bo
 @keyframes kin-in{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
 @keyframes kin-out{to{opacity:0;transform:translate(-50%,20px)}}
 @media(prefers-reduced-motion:reduce){.garment .swing,.garment:hover .swing,.garment .swing.go{animation:none}.kin-w{animation:none;opacity:1}#tbKin,#tbKin.out{animation:none}.rail-panel.in{animation:none}}
+
+.pdp-main{width:100%;border-radius:12px;background:#eef3f7}
+.thumbs{display:flex;gap:8px;margin-top:10px}
+.thumb{flex:1;border:2px solid transparent;border-radius:10px;padding:0;background:#eef3f7;cursor:pointer;overflow:hidden}
+.thumb.on{border-color:#1E6FD9}.thumb img{width:100%;display:block}
+.inq-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.inq-form input,.inq-form select,.inq-form textarea{width:100%;padding:11px;margin:6px 0 12px;border:1.5px solid #c9d4dc;border-radius:10px;font:inherit}
+.hbtn span{white-space:nowrap}
+@media(max-width:700px){.inq-grid{grid-template-columns:1fr}}
