@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ترست براند | خدمة العملاء والاستفسارات</title>
+<link rel="icon" href="logo.svg">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+<main class="container" id="main"></main>
+<div id="siteFooter"></div>
+
+<script src="imgs1.js"></script><script src="imgs2.js"></script><script src="imgs3.js"></script>
+<script src="data.js"></script>
+<script src="i18n.js"></script>
+<script src="store.js"></script><script src="rail.js"></script>
+<script>
+TB.mount('');
+const ar = TB.lang()==='ar';
+document.getElementById('main').innerHTML = `
+<div class="section-head"><h2>${ar?'خدمة العملاء والاستفسارات':'Customer service & inquiries'}</h2></div>
+<div class="inq-grid">
+ <div class="panel" style="padding:18px">
+  <h3>${ar?'تواصل معنا':'Contact us'}</h3>
+  <p>${ar?'اسأل عن منتج أو مقاس أو توصيل. هذه نسخة تجريبية: الرسائل تُحفظ على جهازك فقط ولا يتم إرسالها لأحد.':'Ask about a product, size or delivery. This is a demo: messages are saved on your device only and are not sent to anyone.'}</p>
+  <p class="muted">support@trustbrand.example (demo)<br>${ar?'أرقام التواصل الحقيقية تُضاف عند الإطلاق.':'Real contact numbers will be added at launch.'}</p>
+  <h3>${ar?'أسئلة سريعة':'Quick answers'}</h3>
+  <ul><li>${ar?'الدفع عند الاستلام متاح (تجريبي).':'Cash on delivery is available (demo).'}</li><li>${ar?'شحن مجاني للطلبات فوق 1000 ج.م.':'Free shipping over EGP 1,000.'}</li><li>${ar?'المقاسات من S إلى XXL للملابس الطبية.':'Sizes S to XXL for scrubs and coats.'}</li></ul>
+ </div>
+ <div class="panel" style="padding:18px" id="inquiry">
+  <h3>${ar?'أرسل استفسارك':'Send an inquiry'}</h3>
+  <form class="inq-form" id="inqForm">
+   <label>${ar?'الاسم':'Name'}<input name="name" required></label>
+   <label>${ar?'رقم الهاتف أو البريد':'Phone or email'}<input name="contact" required></label>
+   <label>${ar?'الموضوع':'Topic'}<select name="topic"><option>${ar?'منتج':'Product'}</option><option>${ar?'مقاس':'Size'}</option><option>${ar?'توصيل':'Delivery'}</option><option>${ar?'أخرى':'Other'}</option></select></label>
+   <label>${ar?'رسالتك':'Message'}<textarea name="msg" rows="4" required></textarea></label>
+   <button class="btn btn-primary btn-lg">${ar?'إرسال':'Send'}</button>
+  </form>
+  <p id="inqDone" class="stock in" hidden>${ar?'تم حفظ استفسارك (تجريبي). شكرا لك!':'Your inquiry was saved (demo). Thank you!'}</p>
+ </div>
+</div>`;
+document.getElementById('inqForm').onsubmit = function(e){ e.preventDefault(); var f=new FormData(this), l; try{l=JSON.parse(TB_LS.getItem('tb_inquiries_v1'))||[]}catch(x){l=[]}
+ l.push({name:f.get('name'),contact:f.get('contact'),topic:f.get('topic'),msg:f.get('msg'),at:new Date().toISOString()}); TB_LS.setItem('tb_inquiries_v1',JSON.stringify(l)); this.reset(); document.getElementById('inqDone').hidden=false; TB.kinetic(ar?['وصلتنا','رسالتك']:['Message','received']); };
+</script>
+</body>
+</html>
