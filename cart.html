@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ترست براند | سلة التسوق</title>
+<link rel="icon" href="logo.svg">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+<main class="container" id="main"></main>
+<div id="siteFooter"></div>
+
+<script src="imgs1.js"></script><script src="imgs2.js"></script><script src="imgs3.js"></script>
+<script src="data.js"></script>
+<script src="i18n.js"></script>
+<script src="store.js"></script>
+<script>
+TB.mount('');
+function renderCart() {
+  const lines = TB.cartLines();
+  const main = document.getElementById('main');
+  if (!lines.length) {
+    main.innerHTML = `<div class="panel empty-state"><div class="big">🛒</div><h2>${TB.t('yourCart')}</h2><p class="muted">${TB.t('emptyCart')}</p><a class="btn btn-primary btn-lg" href="index.html">${TB.t('continueShopping')}</a></div>`;
+    return;
+  }
+  const lang = TB.lang();
+  const subtotal = TB.cartSubtotal();
+  const shipping = TB.shippingFor(subtotal);
+  main.innerHTML = `
+    <h1>${TB.t('yourCart')}</h1>
+    <div class="cart-layout">
+      <div class="panel">
+        ${lines.map(l => `
+        <div class="cart-line">
+          <a href="product.html?id=${l.id}"><img src="${l.product.img}" alt=""></a>
+          <div>
+            <a class="lname" href="product.html?id=${l.id}">${TB.esc(lang === 'ar' ? l.product.ar : l.product.en)}</a>
+            <div class="lprice">${TB.fmt(l.product.price)}</div>
+            <div class="qty-ctl" style="margin-top:8px">
+              <button onclick="TB.setQty('${l.id}', ${l.qty - 1}); renderCart()">−</button>
+              <strong>${l.qty}</strong>
+              <button onclick="TB.setQty('${l.id}', ${Math.min(l.qty + 1, 20)}); renderCart()">+</button>
+              <button class="mini-btn danger" onclick="TB.setQty('${l.id}', 0); renderCart()">${TB.t('remove')}</button>
+            </div>
+          </div>
+          <strong>${TB.fmt(l.product.price * l.qty)}</strong>
+        </div>`).join('')}
+        <div style="margin-top:14px"><a href="index.html">${TB.t('continueShopping')} ←</a></div>
+      </div>
+      <div class="panel">
+        <h3 style="margin-top:0">${TB.t('orderSummary')}</h3>
+        <div class="summary-row"><span>${TB.t('subtotal')} (${TB.cartCount()} ${TB.t('itemPlural')})</span><strong>${TB.fmt(subtotal)}</strong></div>
+        <div class="summary-row"><span>${TB.t('shipping')}</span><strong>${shipping === 0 ? TB.t('free') : TB.fmt(shipping)}</strong></div>
+        <div class="summary-row total"><span>${TB.t('total')}</span><span>${TB.fmt(subtotal + shipping)}</span></div>
+        <a class="btn btn-primary btn-block btn-lg" style="margin-top:16px;text-align:center" href="checkout.html">${TB.t('proceedCheckout')}</a>
+      </div>
+    </div>`;
+}
+renderCart();
+</script>
+</body>
+</html>
