@@ -43,7 +43,7 @@ function renderCheckout() {
         <input name="phone" inputmode="tel" dir="ltr" value="${acct ? TB.esc(acct.phone) : ''}" placeholder="01xxxxxxxxx">
         <div class="field-error" data-err="phone" hidden>${TB.t('invalidPhone')}</div>
         <label>${TB.t('governorate')}</label>
-        <select name="gov"><option value="">--</option>${govs.map(g => `<option>${TB.esc(g)}</option>`).join('')}</select>
+        <select name="gov"><option value="">--</option>${govs.map((g, i) => `<option value="${TB.esc(TB_STRINGS.ar.governates[i])}">${TB.esc(g)}</option>`).join('')}</select>
         <div class="field-error" data-err="gov" hidden>${TB.t('required')}</div>
         <label>${TB.t('address')}</label>
         <textarea name="address" rows="2"></textarea>
@@ -54,20 +54,6 @@ function renderCheckout() {
           <input type="radio" name="pay" ${payMethod==='cod'?'checked':''}>
           <span><span class="ph">💵 ${TB.t('payCod')}</span><br><span class="ph-hint">${TB.t('payCodHint')}</span></span>
         </label>
-        <label class="pay-option ${payMethod==='card'?'selected':''}" onclick="setPay('card')">
-          <input type="radio" name="pay" ${payMethod==='card'?'checked':''}>
-          <span><span class="ph">💳 ${TB.t('payCard')}</span><br><span class="ph-hint">${TB.t('payCardHint')}</span></span>
-        </label>
-        <div class="card-fields" id="cardFields" ${payMethod==='card'?'':'hidden'}>
-          <label>${TB.t('cardNumber')}</label>
-          <input name="cardnum" inputmode="numeric" dir="ltr" placeholder="0000 0000 0000 0000" maxlength="19">
-          <label>${TB.t('cardName')}</label>
-          <input name="cardname">
-          <div class="card-grid">
-            <div><label>${TB.t('cardExpiry')}</label><input name="cardexp" dir="ltr" placeholder="MM/YY" maxlength="5"></div>
-            <div><label>${TB.t('cardCvv')}</label><input name="cardcvv" dir="ltr" inputmode="numeric" placeholder="123" maxlength="4"></div>
-          </div>
-        </div>
         <button type="submit" class="btn btn-primary btn-block btn-lg" style="margin-top:22px">${TB.t('placeOrder')}</button>
       </form>
       <div class="panel">
@@ -79,8 +65,8 @@ function renderCheckout() {
     </div>`;
   document.getElementById('coForm').onsubmit = submitOrder;
 }
-function setPay(m) { payMethod = m; renderCheckout(); }
-function submitOrder(e) {
+function setPay(m) { payMethod = 'cod'; }
+async function submitOrder(e) {
   e.preventDefault();
   const f = e.target;
   let ok = true;
@@ -91,11 +77,17 @@ function submitOrder(e) {
   if (!f.gov.value) showErr('gov');
   if (!f.address.value.trim()) showErr('address');
   if (!ok) return;
-  const order = TB.placeOrder({
-    name: f.name.value.trim(), phone: f.phone.value.trim(),
-    gov: f.gov.value, address: f.address.value.trim(), pay: payMethod
-  });
-  location.href = 'order-confirmation.html?n=' + order.number;
+  const btn = f.querySelector('button[type=submit]'); btn.disabled = true;
+  const acctNow = TB.account();
+  try {
+    const order = await TB.placeOrder({ name: f.name.value.trim(), phone: f.phone.value.trim(), gov: f.gov.value, address: f.address.value.trim(), email: acctNow ? acctNow.email : null });
+    location.href = 'order-confirmation.html?n=' + order.number;
+  } catch (err) {
+    btn.disabled = false;
+    let m = document.getElementById('orderErr');
+    if (!m) { m = document.createElement('p'); m.id = 'orderErr'; m.className = 'field-error'; btn.after(m); }
+    m.textContent = /stock/i.test(err.message) ? (TB.lang() === 'ar' ? 'الكمية المطلوبة غير متوفرة حاليًا. عدّل السلة وحاول مرة أخرى.' : 'Some items are out of stock. Update your cart and try again.') : TB.t('orderErr');
+  }
 }
 renderCheckout();
 </script>
