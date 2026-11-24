@@ -28,6 +28,8 @@
     <div class="cat-grid" id="catGrid"></div>
   </section>
 
+  <section id="rail"><div class="section-head"><h2 id="railTitle"></h2></div><div id="railHost"></div></section>
+
   <section id="deals">
     <div class="section-head"><h2 id="dealsTitle"></h2></div>
     <div class="grid" id="dealsGrid"></div>
@@ -49,7 +51,7 @@
 <script src="imgs1.js"></script><script src="imgs2.js"></script><script src="imgs3.js"></script>
 <script src="data.js"></script>
 <script src="i18n.js"></script>
-<script src="store.js"></script>
+<script src="store.js"></script><script src="rail.js"></script>
 <script>
 TB.mount('home');
 document.getElementById('heroImg').src = TB.img('hero.jpg');
@@ -68,6 +70,8 @@ document.getElementById('dealsTitle').textContent = TB.t('dealsTitle');
 document.getElementById('catGrid').innerHTML = TB_CATEGORIES.map(c => `
   <a class="cat-tile" href="index.html?cat=${c.id}"><span class="ico">${c.icon}</span>${TB.lang()==='ar'?c.ar:c.en}</a>`).join('');
 
+document.getElementById('railTitle').textContent = TB.lang()==='ar' ? 'ملابس طبية: المس أي قطعة' : 'Scrubs & lab coats: tap a garment';
+TB.mountRail(document.getElementById('railHost'));
 const deals = TB.products().filter(p => p.old);
 document.getElementById('dealsGrid').innerHTML = deals.map(TB.productCard).join('');
 
