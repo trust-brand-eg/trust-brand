@@ -34,18 +34,51 @@
     else body = '<g transform="translate(0,12)">' + art(g, true) + '</g><text x="60" y="182" font-size="9" text-anchor="middle" fill="#5b6b78">' + g.sizes.join(' · ') + '</text>';
     return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 190">' + bg + body + '</svg>');
   }
-  TB.gallery = function (p) { var g = byId[String(p.id).split('~')[0]]; return g ? [0, 1, 2, 3].map(function (k) { return view(g, k); }) : [p.img]; };
+  var CR = { lc1: ['Ronggy', 'CC BY-SA 4.0'], lc4: ['Rayhana Alhour', 'CC0'], lc2: ['Viv Rolfe', 'CC BY-SA 4.0'], sc1: ['Adenosine Triphosphate', 'CC BY-SA 4.0'], sc4: ['James Heilman, MD', 'CC BY-SA 3.0'], sc5: ['James Heilman, MD', 'CC BY-SA 3.0'] };
+  var SETS = { coat: ['lc1', 'lc4', 'lc2'], top: ['sc1', 'sc4', 'sc5'], dental: [], pants: ['sc5', 'sc1'] };
+  TB.gallery = function (p) {
+    var g = byId[String(p.id).split('~')[0]]; if (!g) return [{ u: p.img }];
+    var ph = window.TB_PH || {}, out = (SETS[g.type] || []).filter(function (k) { return ph[k]; }).map(function (k) { return { u: ph[k], c: CR[k] }; });
+    out.push({ u: view(g, 0), own: true }); out.push({ u: view(g, 3), own: true }); return out;
+  };
+  var DET = { ar: { sku: 'الكود', brand: 'العلامة', size: 'المقاس', model: 'الموديل / الإصدار', mat: 'الخامة', exp: 'تاريخ الصلاحية', origin: 'بلد المنشأ', ph: 'يُحدَّد عند التوريد' }, en: { sku: 'SKU', brand: 'Brand', size: 'Size', model: 'Model / edition', mat: 'Material', exp: 'Expiry date', origin: 'Country of origin', ph: 'Set at supply' } };
+  function details(p, g, ar) {
+    var t = DET[ar ? 'ar' : 'en'], ph = function (x) { return '<span class="ph">' + (x || t.ph) + '</span>'; };
+    var rows = [[t.sku, p.sku], [t.brand, '<span class="trust-tag">Trust</span>'], [t.size, g ? g.sizes.join(' / ') : ph()], [t.model, ph()]];
+    if (g) rows.push([t.mat, ph()]);
+    if (['ppe', 'first-aid'].indexOf(p.cat) > -1 || /glucose|thermo|oxi/.test(p.id)) rows.push([t.exp, ph()]);
+    rows.push([t.origin, ph()]);
+    return '<div class="det"><h3>' + (ar ? 'تفاصيل المنتج' : 'Product details') + '</h3><table>' + rows.map(function (r) { return '<tr><th>' + r[0] + '</th><td>' + r[1] + '</td></tr>'; }).join('') + '</table></div>';
+  }
   TB.enhancePdp = function (p) {
     var root = document.querySelector('.pdp'); if (!root) return; var base = String(p.id).split('~')[0], g = byId[base], ar = TB.lang() === 'ar';
-    var box = root.querySelector('.pdp-img'), gal = TB.gallery(p); if (!g) { var hh = root.querySelector('h1'); if (hh && !root.querySelector('.trust-tag')) hh.insertAdjacentHTML('beforebegin', '<span class="trust-tag">Trust</span>'); }
+    var box = root.querySelector('.pdp-img'), gal = TB.gallery(p);
+    if (!g) { var hh = root.querySelector('h1'); if (hh && !root.querySelector('.trust-tag')) hh.insertAdjacentHTML('beforebegin', '<span class="trust-tag">Trust</span>'); }
     if (gal.length > 1) {
-      box.innerHTML = '<img class="pdp-main" src="' + gal[0] + '" alt=""><div class="thumbs">' + gal.map(function (u, i) { return '<button type="button" class="thumb' + (i ? '' : ' on') + '" data-i="' + i + '"><img src="' + u + '" alt=""></button>'; }).join('') + '</div>';
-      box.querySelectorAll('.thumb').forEach(function (b) { b.onclick = function () { box.querySelector('.pdp-main').src = gal[b.dataset.i]; box.querySelectorAll('.thumb').forEach(function (x) { x.classList.toggle('on', x === b); }); }; });
+      var idx = 0;
+      box.innerHTML = '<div class="stage3d"><img class="pdp-main" draggable="false" alt=""><button type="button" class="nav prev" aria-label="prev">‹</button><button type="button" class="nav next" aria-label="next">›</button></div><div class="thumbs">' + gal.map(function (o, i) { return '<button type="button" class="thumb" data-i="' + i + '"><img src="' + o.u + '" alt=""></button>'; }).join('') + '</div><p class="credit"></p>';
+      var img = box.querySelector('.pdp-main'), st = box.querySelector('.stage3d'), cr = box.querySelector('.credit');
+      function show(i, dir) {
+        idx = (i + gal.length) % gal.length; var o = gal[idx];
+        if (dir && img.animate) img.animate([{ transform: 'rotateY(0)', opacity: 1 }, { transform: 'rotateY(' + (dir * -80) + 'deg)', opacity: 0.1 }], { duration: 140, easing: 'ease-in' }).onfinish = function () { img.src = o.u; img.animate([{ transform: 'rotateY(' + (dir * 80) + 'deg)', opacity: 0.1 }, { transform: 'rotateY(0)', opacity: 1 }], { duration: 180, easing: 'ease-out' }); }; else img.src = o.u;
+        box.querySelectorAll('.thumb').forEach(function (x, k) { x.classList.toggle('on', k === idx); });
+        cr.innerHTML = o.own ? (ar ? 'رسم توضيحي من تصميمنا' : 'Our own drawing') : (ar ? 'صورة توضيحية وليست من مخزون المتجر. ' : 'Illustration photo, not our stock. ') + 'Photo: ' + o.c[0] + ', ' + o.c[1] + ', Wikimedia Commons';
+      }
+      show(0, 0);
+      box.querySelector('.prev').onclick = function () { show(idx - 1, -1); }; box.querySelector('.next').onclick = function () { show(idx + 1, 1); };
+      box.querySelectorAll('.thumb').forEach(function (b) { b.onclick = function () { show(Number(b.dataset.i), Number(b.dataset.i) > idx ? 1 : -1); }; });
+      var x0 = null, moved = 0;
+      st.addEventListener('pointerdown', function (e) { x0 = e.clientX; moved = 0; try { st.setPointerCapture(e.pointerId); } catch (z) {} });
+      st.addEventListener('pointermove', function (e) { if (x0 === null) return; moved = e.clientX - x0; img.style.transform = 'rotateY(' + Math.max(-40, Math.min(40, moved / 3)) + 'deg)'; });
+      function end() { if (x0 === null) return; var m = moved; x0 = null; img.style.transition = 'transform .25s'; img.style.transform = ''; setTimeout(function () { img.style.transition = ''; }, 260); if (Math.abs(m) > 50) show(idx + (m < 0 ? 1 : -1), m < 0 ? 1 : -1); }
+      st.addEventListener('pointerup', end); st.addEventListener('pointercancel', end);
     }
+    var info = root.querySelector('.pdp-info'); info.insertAdjacentHTML('beforeend', details(p, g, ar));
     if (g) {
-      var size = g.sizes[Math.min(1, g.sizes.length - 1)], row = document.createElement('div');
+      var size = g.sizes[Math.min(1, g.sizes.length - 1)], row = document.createElement('div'), h1 = root.querySelector('h1');
+      if (h1 && !root.querySelector('.trust-tag')) h1.insertAdjacentHTML('beforebegin', '<span class="trust-tag">Trust</span>');
       row.className = 'rp-sizes'; row.innerHTML = '<strong>' + (ar ? 'المقاس' : 'Size') + '</strong> ' + g.sizes.map(function (s) { return '<button type="button" class="chip' + (s === size ? ' on' : '') + '" data-s="' + s + '">' + s + '</button>'; }).join('');
-      var q = root.querySelector('.qty-row'); var h1 = root.querySelector('h1'); if (h1 && !root.querySelector('.trust-tag')) h1.insertAdjacentHTML('beforebegin', '<span class="trust-tag">Trust</span>'); q.parentNode.insertBefore(row, q);
+      var q = root.querySelector('.qty-row'); q.parentNode.insertBefore(row, q);
       row.querySelectorAll('.chip').forEach(function (c) { c.onclick = function () { size = c.dataset.s; row.querySelectorAll('.chip').forEach(function (x) { x.classList.toggle('on', x === c); }); }; });
       var add = root.querySelector('.pdp-info .btn-primary'); add.removeAttribute('onclick');
       add.onclick = function () { TB.fly(add); TB.addToCart(base + '~' + size, Number(document.getElementById('qtySel').value)); TB.kinetic(ar ? ['تمت', 'الإضافة', 'إلى', 'سلتك'] : ['Added', 'to', 'your', 'cart']); };
@@ -77,7 +110,7 @@
   TB.onAdd = function (id, btn) { TB.fly(btn); oAdd2.call(TB, id, btn); };
   // catalog integration
   if (typeof TB_CATEGORIES !== "undefined" && !TB_CATEGORIES.some(function (c) { return c.id === 'labcoats'; })) { TB_CATEGORIES.push({ id: 'labcoats', en: 'Lab Coats', ar: 'بالطو معمل', icon: '🥼' }); TB_CATEGORIES.push({ id: 'scrubs', en: 'Scrubs & Caps', ar: 'سكراب وطواقي', icon: '👕' }); }
-  function asProduct(g) { return { id: g.id, sku: 'TB-2' + (100 + G.indexOf(g)), cat: g.cat, en: g.en, ar: g.ar, price: g.price, old: null, rating: 4.6, reviews: 40 + G.indexOf(g) * 7, stock: 30, img: 'g:' + g.id, desc_en: g.de, desc_ar: g.da, specs: { en: ['Sizes ' + g.sizes.join(', '), 'Trust'], ar: ['المقاسات ' + g.sizes.join('، '), 'Trust'] } }; }
+  function asProduct(g) { return { id: g.id, sku: 'TB-2' + (100 + G.indexOf(g)), cat: g.cat, en: g.en, ar: g.ar, price: g.price, old: null, rating: 4.6, reviews: 40 + G.indexOf(g) * 7, stock: 30, img: 'g:' + g.id, desc_en: g.de, desc_ar: g.da, specs: { en: ['Sizes ' + g.sizes.join(', ')], ar: ['المقاسات ' + g.sizes.join('، ')] } }; }
   var oImg = TB.img, oProducts = TB.products, oProduct = TB.product;
   TB.img = function (s) { if (typeof s === 'string' && s.indexOf('g:') === 0 && byId[s.slice(2)]) return uri(byId[s.slice(2)]); return oImg.call(TB, s); };
   TB.products = function () { var l = oProducts.call(TB); G.forEach(function (g) { if (!l.some(function (p) { return p.id === g.id; })) l.push(Object.assign(asProduct(g), { img: TB.img('g:' + g.id) })); }); return l; };
