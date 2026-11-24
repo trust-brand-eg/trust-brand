@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ترست براند | لوحة التحكم</title>
+<link rel="icon" href="logo.svg">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+<main class="container" id="main"></main>
+<div id="siteFooter"></div>
+
+<script src="imgs1.js"></script><script src="imgs2.js"></script><script src="imgs3.js"></script>
+<script src="data.js"></script>
+<script src="i18n.js"></script>
+<script src="store.js"></script>
+<script>
+TB.mount('');
+const OWNER = { name: 'Islam Shoman', email: 'islamshowman1@gmail.com' };
+let tab = 'dash';
+let authed = false;
+async function sha(s) {
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('tb-salt:' + s));
+  return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
+}
+function guard() { return authed; }
+function ownerBanner() {
+  return `<p class="muted small">${TB.lang()==='ar'?'المالك':'Owner'}: <strong>${OWNER.name}</strong> · ${OWNER.email}</p>`;
+}
+function renderLogin() {
+  const first = !TB_LS.getItem('tb_owner_hash');
+  const ar = TB.lang() === 'ar';
+  document.getElementById('main').innerHTML = `
+    <div class="panel admin-login">
+      <h2>${TB.t('adminTitle')}</h2>
+      ${ownerBanner()}
+      <p class="muted small">${first
+        ? (ar ? 'أول مرة: اختر كلمة مرور خاصة بك (8 أحرف على الأقل). تُحفظ مشفرة في هذا المتصفح فقط.' : 'First time: choose your own passcode (8+ characters). It is stored hashed in this browser only.')
+        : (ar ? 'أدخل كلمة المرور الخاصة بك.' : 'Enter your passcode.')}</p>
+      <form onsubmit="event.preventDefault(); tryPass(this.pass.value);">
+        <input type="password" name="pass" placeholder="${TB.t('adminPass')}" style="width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;margin-bottom:10px">
+        <button class="btn btn-primary btn-block">${first ? (ar ? 'تعيين ودخول' : 'Set and enter') : TB.t('enter')}</button>
+      </form>
+      <p class="field-error" id="passErr" hidden>${TB.t('wrongPass')}</p>
+    </div>`;
+}
+async function tryPass(v) {
+  const stored = TB_LS.getItem('tb_owner_hash');
+  if (!stored) {
+    if (v.length < 8) { const e = document.getElementById('passErr'); e.textContent = TB.lang()==='ar'?'8 أحرف على الأقل':'At least 8 characters'; e.hidden = false; return; }
+    TB_LS.setItem('tb_owner_hash', await sha(v)); authed = true; render();
+  } else if (await sha(v) === stored) { authed = true; render(); }
+  else document.getElementById('passErr').hidden = false;
+}
+function exportData() {
+  const data = JSON.stringify({ products: TB.products(), orders: TB.orders() }, null, 1);
+  const el = document.getElementById('exportBox'); el.value = data; el.hidden = false; el.select();
+}
+function importData() {
+  try {
+    const d = JSON.parse(document.getElementById('exportBox').value);
+    if (Array.isArray(d.products)) TB.saveProducts(d.products);
+    if (Array.isArray(d.orders)) TB.saveOrders(d.orders);
+    render();
+  } catch (e) { alert('Invalid data'); }
+}
+function readImage(file, cb) {
+  const r = new FileReader();
+  r.onload = () => { const im = new Image(); im.onload = () => {
+    const s = Math.min(1, 640 / Math.max(im.width, im.height));
+    const c = document.createElement('canvas'); c.width = im.width * s; c.height = im.height * s;
+    c.getContext('2d').drawImage(im, 0, 0, c.width, c.height); cb(c.toDataURL('image/jpeg', 0.8));
+  }; im.src = r.result; };
+  r.readAsDataURL(file);
+}
+
+const STATUS_KEYS = ['new','confirmed','shipped','delivered','cancelled'];
+function statusLabel(s) { return TB.t('status' + s[0].toUpperCase() + s.slice(1)); }
+
+function render() {
+  if (!guard()) return renderLogin();
+  const prods = TB.products();
+  const orders = TB.orders();
+  const lang = TB.lang();
+  let body = '';
+
+  if (tab === 'dash') {
+    const revenue = orders.filter(o => o.status !== 'cancelled').reduce((s,o) => s + o.total, 0);
+    const low = prods.filter(p => p.stock <= 20);
+    body = `<div class="stat-grid">
+      <div class="stat"><div class="num">${prods.length}</div><div class="lbl">${TB.t('totalProducts')}</div></div>
+      <div class="stat"><div class="num">${orders.length}</div><div class="lbl">${TB.t('totalOrders')}</div></div>
+      <div class="stat"><div class="num">${TB.fmt(revenue)}</div><div class="lbl">${TB.t('revenue')}</div></div>
+      <div class="stat"><div class="num">${low.length}</div><div class="lbl">${TB.t('lowStockItems')}</div></div>
+    </div>`;
+  }
+
+  if (tab === 'dash') {
+    body += `<div class="panel" style="margin-top:16px"><h3 style="margin-top:0">${lang==='ar'?'نسخ احتياطي':'Backup / move data'}</h3>
+      <p class="muted small">${lang==='ar'?'بيانات المتجر محفوظة في هذا المتصفح فقط. صدّرها لتحتفظ بنسخة أو لتنقلها لجهاز آخر.':'Store data lives in this browser only. Export it to keep a copy or move it to another device.'}</p>
+      <button class="btn btn-ghost" onclick="exportData()">${lang==='ar'?'تصدير':'Export'}</button>
+      <button class="btn btn-ghost" onclick="importData()">${lang==='ar'?'استيراد (الصق البيانات بالأسفل)':'Import (paste data below)'}</button>
+      <textarea id="exportBox" rows="6" hidden style="width:100%;margin-top:10px"></textarea></div>`;
+  }
+
+  if (tab === 'products') {
+    body = `
+    <form class="add-form" onsubmit="event.preventDefault(); addProduct(this);">
+      <div><label>${TB.t('nameAr')}</label><input name="ar" required></div>
+      <div><label>${TB.t('nameEn')}</label><input name="en" required></div>
+      <div><label>${TB.t('category')}</label><select name="cat">${TB_CATEGORIES.map(c => `<option value="${c.id}">${lang==='ar'?c.ar:c.en}</option>`).join('')}</select></div>
+      <div><label>${TB.t('price')} (${TB.t('egp')})</label><input name="price" type="number" min="1" required></div>
+      <div><label>${TB.t('stock')}</label><input name="stock" type="number" min="0" required></div>
+      <div><label>${TB.lang()==='ar'?'صورة المنتج':'Product photo'}</label><input name="photo" type="file" accept="image/*"></div>
+      <div><button class="btn btn-primary">${TB.t('addProduct')}</button></div>
+    </form>
+    <table class="admin-table"><thead><tr>
+      <th></th><th>${TB.t('product')}</th><th>${TB.t('sku')}</th><th>${TB.t('category')}</th><th>${TB.t('price')}</th><th>${TB.t('stock')}</th><th>${TB.t('actions')}</th>
+    </tr></thead><tbody>
+      ${prods.map(p => `<tr>
+        <td><img src="${p.img}" alt="" onerror="this.style.visibility='hidden'"></td>
+        <td><strong>${TB.esc(lang==='ar'?p.ar:p.en)}</strong></td>
+        <td class="muted">${p.sku}</td>
+        <td>${TB.catName(p.cat)}</td>
+        <td><input type="number" value="${p.price}" min="1" onchange="upd('${p.id}','price',this.value)"></td>
+        <td><input type="number" value="${p.stock}" min="0" onchange="upd('${p.id}','stock',this.value)"></td>
+        <td><button class="mini-btn danger" onclick="delProduct('${p.id}')">${TB.t('del')}</button></td>
+      </tr>`).join('')}
+    </tbody></table>
+    <p class="muted small" id="savedNote" hidden>${TB.t('adminSaved')}</p>`;
+  }
+
+  if (tab === 'orders') {
+    body = orders.length === 0
+      ? `<div class="panel empty-state"><div class="big">📦</div><p class="muted">${TB.t('noOrders')}</p></div>`
+      : `<table class="admin-table"><thead><tr>
+        <th>${TB.t('order')}</th><th>${TB.t('customer')}</th><th>${TB.t('items')}</th><th>${TB.t('total')}</th><th>${TB.t('date')}</th><th>${TB.t('status')}</th>
+      </tr></thead><tbody>
+      ${orders.map(o => `<tr>
+        <td><strong>${o.number}</strong><br><span class="muted small">${o.customer.pay==='cod'?TB.t('payCod'):TB.t('payCard')}</span></td>
+        <td>${TB.esc(o.customer.name)}<br><span class="muted small" dir="ltr">${TB.esc(o.customer.phone)}</span><br><span class="muted small">${TB.esc(o.customer.gov)} - ${TB.esc(o.customer.address)}</span></td>
+        <td>${o.items.map(i => `${i.qty}× ${TB.esc(lang==='ar'?i.name_ar:i.name_en)}`).join('<br>')}</td>
+        <td><strong>${TB.fmt(o.total)}</strong></td>
+        <td class="muted small">${new Date(o.date).toLocaleString(lang==='ar'?'ar-EG':'en-EG')}</td>
+        <td>
+          <span class="chip ${o.status}">${statusLabel(o.status)}</span><br>
+          <select onchange="setStatus('${o.number}', this.value)" style="margin-top:6px;padding:5px;border-radius:6px;border:1px solid var(--line)">
+            ${STATUS_KEYS.map(s => `<option value="${s}" ${o.status===s?'selected':''}>${statusLabel(s)}</option>`).join('')}
+          </select>
+        </td>
+      </tr>`).join('')}
+      </tbody></table>`;
+  }
+
+  if (tab === 'stock') {
+    const sorted = prods.slice().sort((a,b) => a.stock - b.stock);
+    body = `<table class="admin-table"><thead><tr>
+      <th>${TB.t('product')}</th><th>${TB.t('sku')}</th><th>${TB.t('stock')}</th><th>${TB.t('status')}</th><th>${TB.t('actions')}</th>
+    </tr></thead><tbody>
+      ${sorted.map(p => {
+        const cls = p.stock === 0 ? 'out' : (p.stock <= 20 ? 'low' : 'ok');
+        const lbl = p.stock === 0 ? TB.t('outOfStock') : (p.stock <= 20 ? TB.t('lowStock') : TB.t('inStock'));
+        return `<tr>
+          <td><strong>${TB.esc(lang==='ar'?p.ar:p.en)}</strong></td>
+          <td class="muted">${p.sku}</td>
+          <td><input type="number" value="${p.stock}" min="0" onchange="upd('${p.id}','stock',this.value)"></td>
+          <td><span class="chip ${cls}">${lbl}</span></td>
+          <td><button class="mini-btn" onclick="upd('${p.id}','stock',${p.stock}+50)">+50</button></td>
+        </tr>`;
+      }).join('')}
+    </tbody></table>`;
+  }
+
+  document.getElementById('main').innerHTML = `
+    <div class="admin-top">
+      <h1>🛠 ${TB.t('adminTitle')}</h1>
+      <div style="display:flex;gap:8px">
+        <a class="btn btn-ghost" href="index.html">${TB.t('backToStore')}</a>
+        <button class="btn btn-ghost" onclick="if(confirm('Reset?')){TB_LS.removeItem('tb_products_v1');TB_LS.removeItem('tb_orders_v1');TB_LS.removeItem('tb_cart_v1');location.reload();}">${TB.t('resetDemo')}</button>
+        <button class="btn btn-ghost" onclick="location.reload()">${TB.t('signOut')}</button>
+      </div>
+    </div>
+    ${ownerBanner()}
+    <div class="tabs">
+      <button class="${tab==='dash'?'active':''}" onclick="tab='dash';render()">${TB.t('dashboard')}</button>
+      <button class="${tab==='products'?'active':''}" onclick="tab='products';render()">${TB.t('productsTab')}</button>
+      <button class="${tab==='orders'?'active':''}" onclick="tab='orders';render()">${TB.t('ordersTab')}</button>
+      <button class="${tab==='stock'?'active':''}" onclick="tab='stock';render()">${TB.t('stockTab')}</button>
+    </div>
+    ${body}`;
+}
+
+function upd(id, field, value) {
+  const prods = TB.products();
+  const p = prods.find(p => p.id === id);
+  if (!p) return;
+  p[field] = Math.max(field === 'price' ? 1 : 0, Number(value) || 0);
+  TB.saveProducts(prods);
+  render();
+  const note = document.getElementById('savedNote');
+  if (note) note.hidden = false;
+}
+function delProduct(id) {
+  if (!confirm('؟')) return;
+  TB.saveProducts(TB.products().filter(p => p.id !== id));
+  render();
+}
+function addProduct(f) {
+  const file = f.photo && f.photo.files[0];
+  if (file && !f._img) { readImage(file, url => { f._img = url; addProduct(f); }); return; }
+  const prods = TB.products();
+  const id = 'p-' + Date.now().toString(36);
+  prods.push({
+    id, sku: 'TB-' + (1000 + prods.length + 1), cat: f.cat.value,
+    ar: f.ar.value.trim(), en: f.en.value.trim(),
+    price: Number(f.price.value), old: null, rating: 0, reviews: 0,
+    stock: Number(f.stock.value), img: f._img || 'placeholder.jpg',
+    desc_ar: '', desc_en: '', specs: { ar: [], en: [] }
+  });
+  TB.saveProducts(prods);
+  render();
+}
+function setStatus(num, s) {
+  const orders = TB.orders();
+  const o = orders.find(o => o.number === num);
+  if (o) { o.status = s; TB.saveOrders(orders); render(); }
+}
+render();
+</script>
+</body>
+</html>
