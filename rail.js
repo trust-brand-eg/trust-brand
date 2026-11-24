@@ -113,7 +113,7 @@
   function asProduct(g) { return { id: g.id, sku: 'TB-2' + (100 + G.indexOf(g)), cat: g.cat, en: g.en, ar: g.ar, price: g.price, old: null, rating: 4.6, reviews: 40 + G.indexOf(g) * 7, stock: 30, img: 'g:' + g.id, desc_en: g.de, desc_ar: g.da, specs: { en: ['Sizes ' + g.sizes.join(', ')], ar: ['المقاسات ' + g.sizes.join('، ')] } }; }
   var oImg = TB.img, oProducts = TB.products, oProduct = TB.product;
   TB.img = function (s) { if (typeof s === 'string' && s.indexOf('g:') === 0 && byId[s.slice(2)]) return uri(byId[s.slice(2)]); return oImg.call(TB, s); };
-  TB.products = function () { var l = oProducts.call(TB); G.forEach(function (g) { if (!l.some(function (p) { return p.id === g.id; })) l.push(Object.assign(asProduct(g), { img: TB.img('g:' + g.id) })); }); return l; };
+  TB.products = function () { var l = oProducts.call(TB); (TB._db ? [] : G).forEach(function (g) { if (!l.some(function (p) { return p.id === g.id; })) l.push(Object.assign(asProduct(g), { img: TB.img('g:' + g.id) })); }); return l; };
   TB.product = function (id) { var b = String(id).split('~'), p = TB.products().find(function (x) { return x.id === b[0]; }); if (!p) return p; if (b[1]) { p = Object.assign({}, p, { id: id, en: p.en + ' (' + b[1] + ')', ar: p.ar + ' (' + b[1] + ')' }); } return p; };
 
   // kinetic message
