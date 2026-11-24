@@ -49,21 +49,20 @@ function fail(e) { alert(L('تعذر الحفظ: ', 'Could not save: ') + (e && 
 function loginView(msg) {
   main.innerHTML = `<div class="panel admin-login">
     <h2>${L('لوحة تحكم ترست براند', 'Trust Brand admin')}</h2>
-    <p class="muted small">${L('الدخول للمالك فقط. اكتب بريدك الإلكتروني وسنرسل لك رابط دخول.', 'Owner only. Enter your email and we send you a sign-in link.')}</p>
+    <p class="muted small">${L('الدخول للمالك فقط.', 'Owner only.')}</p>
     ${msg ? `<p class="stock in">${msg}</p>` : ''}
-    <form onsubmit="event.preventDefault(); sendLink(this);">
-      <input type="email" name="e" required placeholder="${L('البريد الإلكتروني', 'Email')}" style="width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;margin-bottom:10px">
-      <button class="btn btn-primary btn-block">${L('أرسل رابط الدخول', 'Send sign-in link')}</button>
+    <form onsubmit="event.preventDefault(); adminLogin(this);">
+      <input type="email" name="e" required autocomplete="username" placeholder="${L('البريد الإلكتروني', 'Email')}" style="width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;margin-bottom:10px">
+      <input type="password" name="pw" required autocomplete="current-password" placeholder="${L('كلمة المرور', 'Password')}" style="width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;margin-bottom:10px">
+      <button class="btn btn-primary btn-block">${L('دخول', 'Sign in')}</button>
     </form>
     <p class="field-error" id="linkErr" hidden></p>
   </div>`;
 }
-async function sendLink(f) {
+async function adminLogin(f) {
   const err = document.getElementById('linkErr'); err.hidden = true;
-  try {
-    await SB.emailLink(f.e.value.trim(), location.origin + location.pathname);
-    loginView(L('تم الإرسال. افتح الرابط من بريدك على نفس هذا الجهاز.', 'Sent. Open the link from your email on this device.'));
-  } catch (e) { err.textContent = L('تعذر الإرسال. تأكد من البريد وحاول بعد قليل.', 'Could not send. Check the email and try again shortly.'); err.hidden = false; }
+  try { await SB.signIn(f.e.value.trim(), f.pw.value); location.reload(); }
+  catch (e) { err.textContent = L('بيانات الدخول غير صحيحة.', 'Wrong email or password.'); err.hidden = false; }
 }
 async function start() {
   await SB.ready;
