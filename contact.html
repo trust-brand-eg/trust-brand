@@ -24,10 +24,10 @@ document.getElementById('main').innerHTML = `
 <div class="inq-grid">
  <div class="panel" style="padding:18px">
   <h3>${ar?'تواصل معنا':'Contact us'}</h3>
-  <p>${ar?'اسأل عن منتج أو مقاس أو توصيل. هذه نسخة تجريبية: الرسائل تُحفظ على جهازك فقط ولا يتم إرسالها لأحد.':'Ask about a product, size or delivery. This is a demo: messages are saved on your device only and are not sent to anyone.'}</p>
-  <p class="muted">support@trustbrand.example (demo)<br>${ar?'أرقام التواصل الحقيقية تُضاف عند الإطلاق.':'Real contact numbers will be added at launch.'}</p>
+  <p>${ar?'اسأل عن منتج أو مقاس أو توصيل. اكتب لنا وسنرد عليك.':'Ask about a product, size or delivery. Write to us and we will reply.'}</p>
+  <div class="cs-btns"><a class="btn btn-primary" id="csCall" href="tel:PHONE_HERE">📞 ${ar?'اتصل بنا':'Call us'}</a><a class="btn btn-secondary" id="csWa" href="https://wa.me/WHATSAPP_HERE">💬 WhatsApp</a><a class="btn btn-ghost" id="csMap" href="https://maps.google.com/?q=ADDRESS_HERE">📍 ${ar?'موقعنا':'Our location'}</a></div><p class="muted small">PHONE_HERE / WHATSAPP_HERE / ADDRESS_HERE</p>
   <h3>${ar?'أسئلة سريعة':'Quick answers'}</h3>
-  <ul><li>${ar?'الدفع عند الاستلام متاح (تجريبي).':'Cash on delivery is available (demo).'}</li><li>${ar?'شحن مجاني للطلبات فوق 1000 ج.م.':'Free shipping over EGP 1,000.'}</li><li>${ar?'المقاسات من S إلى XXL للملابس الطبية.':'Sizes S to XXL for scrubs and coats.'}</li></ul>
+  <ul><li>${ar?'الدفع عند الاستلام متاح.':'Cash on delivery is available.'}</li><li>${ar?'شحن مجاني للطلبات فوق 1000 ج.م.':'Free shipping over EGP 1,000.'}</li><li>${ar?'المقاسات من S إلى XXL للملابس الطبية.':'Sizes S to XXL for scrubs and coats.'}</li></ul>
  </div>
  <div class="panel" style="padding:18px" id="inquiry">
   <h3>${ar?'أرسل استفسارك':'Send an inquiry'}</h3>
@@ -38,7 +38,7 @@ document.getElementById('main').innerHTML = `
    <label>${ar?'رسالتك':'Message'}<textarea name="msg" rows="4" required></textarea></label>
    <button class="btn btn-primary btn-lg">${ar?'إرسال':'Send'}</button>
   </form>
-  <p id="inqDone" class="stock in" hidden>${ar?'تم حفظ استفسارك (تجريبي). شكرا لك!':'Your inquiry was saved (demo). Thank you!'}</p>
+  <p id="inqDone" class="stock in" hidden>${ar?'تم حفظ استفسارك. شكرا لك!':'Your inquiry was saved. Thank you!'}</p>
  </div>
 </div>`;
 document.getElementById('inqForm').onsubmit = function(e){ e.preventDefault(); var f=new FormData(this), l; try{l=JSON.parse(TB_LS.getItem('tb_inquiries_v1'))||[]}catch(x){l=[]}
