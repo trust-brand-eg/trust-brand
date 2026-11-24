@@ -240,3 +240,11 @@ table.admin-table { width: 100%; border-collapse: collapse; background: #fff; bo
 .inq-form input,.inq-form select,.inq-form textarea{width:100%;padding:11px;margin:6px 0 12px;border:1.5px solid #c9d4dc;border-radius:10px;font:inherit}
 .hbtn span{white-space:nowrap}
 @media(max-width:700px){.inq-grid{grid-template-columns:1fr}}
+
+.trust-tag{display:inline-block;background:#fff;color:#1E6FD9;font-family:'Pacifico',cursive,serif;font-style:italic;font-size:15px;padding:1px 12px;border:1.5px solid #1E6FD9;border-radius:999px;margin-bottom:6px;line-height:1.5}
+.fly-dot{position:fixed;z-index:10000;pointer-events:none;background:#fff;color:#1E6FD9;border:2px solid #1E6FD9;border-radius:999px;padding:3px 12px;font:italic 700 15px 'Pacifico',cursive,serif;box-shadow:0 6px 16px #0003}
+.cart-btn.bump{animation:bump .5s ease}
+@keyframes bump{30%{transform:scale(1.25)}60%{transform:scale(.92)}100%{transform:none}}
+.cs-btns{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
+html{scroll-behavior:smooth}*{-webkit-tap-highlight-color:transparent}
+.btn,.hbtn,.cat-tile,.card{transition:transform .12s ease,box-shadow .12s ease}.btn:active,.hbtn:active,.cat-tile:active{transform:scale(.96)}
