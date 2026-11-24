@@ -90,6 +90,12 @@ function renderFilters() {
     <div class="fgroup"><button class="btn btn-ghost btn-block" onclick="clearFilters()">${TB.t('clearFilters')}</button></div>`;
   document.querySelectorAll('input[name=fcat]').forEach(r => r.onchange = () => { state.cat = r.value; render(); });
 }
+document.addEventListener('click', function (e) {
+  const a = e.target.closest('a[href*="index.html?cat="]'); if (!a) return;
+  e.preventDefault(); const c = new URL(a.href, location.href).searchParams.get('cat');
+  state.cat = c || ''; state.q = ''; history.pushState(null, '', 'index.html?cat=' + c);
+  renderFilters(); render(); document.getElementById('products').scrollIntoView({ behavior: 'smooth' });
+});
 function applyPrice() {
   state.min = document.getElementById('fmin').value;
   state.max = document.getElementById('fmax').value;
