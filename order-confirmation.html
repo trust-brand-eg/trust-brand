@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ترست براند | تأكيد الطلب</title>
+<link rel="icon" href="logo.svg">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+<main class="container" id="main"></main>
+<div id="siteFooter"></div>
+
+<script src="imgs1.js"></script><script src="imgs2.js"></script><script src="imgs3.js"></script>
+<script src="data.js"></script>
+<script src="i18n.js"></script>
+<script src="store.js"></script>
+<script>
+TB.mount('');
+const n = new URLSearchParams(location.search).get('n');
+const order = TB.orders().find(o => o.number === n);
+const main = document.getElementById('main');
+const lang = TB.lang();
+if (!order) {
+  main.innerHTML = `<div class="panel empty-state"><div class="big">📦</div><a class="btn btn-primary" href="index.html">${TB.t('backHome')}</a></div>`;
+} else {
+  main.innerHTML = `
+  <div class="panel confirm-box">
+    <div class="confirm-icon">✓</div>
+    <h1>${TB.t('orderConfirmed')}</h1>
+    <div class="order-num">${TB.t('orderNumber')}: ${order.number}</div>
+    <p>${TB.t('orderThanks')}</p>
+    <p class="muted small">${TB.t('emailNote')}</p>
+    <div style="text-align:start;margin:22px 0">
+      ${order.items.map(i => `<div class="summary-row"><span>${i.qty} × ${TB.esc(lang==='ar'?i.name_ar:i.name_en)}</span><span>${TB.fmt(i.price*i.qty)}</span></div>`).join('')}
+      <div class="summary-row"><span>${TB.t('shipping')}</span><strong>${order.shipping===0?TB.t('free'):TB.fmt(order.shipping)}</strong></div>
+      <div class="summary-row total"><span>${TB.t('total')}</span><span>${TB.fmt(order.total)}</span></div>
+      <div class="summary-row"><span class="muted">${TB.t('paymentMethod')}</span><span>${order.customer.pay==='cod' ? TB.t('payCod') : TB.t('payCard')}</span></div>
+      <div class="summary-row"><span class="muted">${TB.t('governorate')}</span><span>${TB.esc(order.customer.gov)}</span></div>
+    </div>
+    <a class="btn btn-primary btn-lg" href="index.html">${TB.t('backHome')}</a>
+  </div>`;
+}
+</script>
+</body>
+</html>
