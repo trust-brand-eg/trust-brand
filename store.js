@@ -186,7 +186,7 @@ const TB = {
           <input name="p" required placeholder="${TB.t('phone')}">
           <button class="btn btn-primary btn-block">${TB.t('signIn')}</button>
         </form>
-        <p class="muted small">${TB.t('demoBanner')}</p>
+        
       `}
     </div>`;
   },
@@ -208,10 +208,10 @@ const TB = {
         </div>
         <div>
           <h4>${TB.t('contactUs')}</h4>
-          <p class="muted">support@trustbrand.example (demo)<br>+20 100 000 0000 (demo)</p>
+          <p class="muted">📞 PHONE_HERE<br>💬 WHATSAPP_HERE<br>📍 ADDRESS_HERE</p>
         </div>
       </div>
-      <div class="footer-bar">© 2026 ${TB.t('brand')} — Demo storefront</div>
+      <div class="footer-bar">© 2026 ${TB.t('brand')}</div>
     </footer>`;
   },
 
