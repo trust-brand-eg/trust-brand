@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ترست براند | المنتج</title>
+<link rel="icon" href="logo.svg">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+<main class="container" id="main"></main>
+<div id="siteFooter"></div>
+
+<script src="imgs1.js"></script><script src="imgs2.js"></script><script src="imgs3.js"></script>
+<script src="data.js"></script>
+<script src="i18n.js"></script>
+<script src="store.js"></script>
+<script>
+TB.mount('');
+const id = new URLSearchParams(location.search).get('id');
+const p = TB.product(id);
+const main = document.getElementById('main');
+if (!p) {
+  main.innerHTML = `<div class="panel empty-state"><div class="big">😕</div><p>${TB.t('noResults')}</p><a class="btn btn-primary" href="index.html">${TB.t('backHome')}</a></div>`;
+} else {
+  const lang = TB.lang();
+  const name = lang === 'ar' ? p.ar : p.en;
+  document.title = `${name} | ${TB.t('brand')}`;
+  const desc = lang === 'ar' ? p.desc_ar : p.desc_en;
+  const specs = (p.specs && (lang === 'ar' ? p.specs.ar : p.specs.en)) || [];
+  const disc = p.old ? Math.round((1 - p.price / p.old) * 100) : 0;
+  const stockCls = p.stock === 0 ? 'out' : (p.stock <= 20 ? 'low' : 'in');
+  const stockTxt = p.stock === 0 ? TB.t('outOfStock') : (p.stock <= 20 ? `${TB.t('lowStock')} (${p.stock} ${TB.t('units')})` : TB.t('inStock'));
+  const related = TB.products().filter(x => x.cat === p.cat && x.id !== p.id).slice(0, 4);
+  main.innerHTML = `
+    <div class="breadcrumb"><a href="index.html">${TB.t('home')}</a> › <a href="index.html?cat=${p.cat}">${TB.catName(p.cat)}</a> › ${TB.esc(name)}</div>
+    <div class="pdp">
+      <div class="pdp-img"><img src="${p.img}" alt="${TB.esc(name)}"></div>
+      <div class="pdp-info">
+        <h1>${TB.esc(name)}</h1>
+        <div class="muted">${TB.t('sku')}: ${p.sku}</div>
+        <div><span class="stars">${TB.stars(p.rating)}</span> <span class="muted">${p.rating} · ${p.reviews} ${TB.t('reviews')}</span></div>
+        <div class="price">${TB.fmt(p.price)} ${p.old ? `<del>${TB.fmt(p.old)}</del> <span class="chip out" style="background:#dc2626;color:#fff">-${disc}%</span>` : ''}</div>
+        <div class="stock ${stockCls}">${stockTxt}</div>
+        <div class="qty-row">
+          <label for="qtySel">${TB.t('qty')}</label>
+          <select id="qtySel">${Array.from({length: Math.min(10, Math.max(p.stock,1))}, (_,i) => `<option value="${i+1}">${i+1}</option>`).join('')}</select>
+        </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn btn-primary btn-lg" ${p.stock===0?'disabled':''} onclick="TB.addToCart('${p.id}', Number(document.getElementById('qtySel').value)); this.textContent=TB.t('added')">${TB.t('addToCart')}</button>
+          <a class="btn btn-secondary btn-lg" href="cart.html">${TB.t('cart')}</a>
+        </div>
+        <h3>${TB.t('description')}</h3>
+        <p>${TB.esc(desc)}</p>
+        ${specs.length ? `<h3>${TB.t('specs')}</h3><ul class="spec-list">${specs.map(s => `<li>${TB.esc(s)}</li>`).join('')}</ul>` : ''}
+      </div>
+    </div>
+    ${related.length ? `<div class="section-head"><h2>${TB.t('related')}</h2></div><div class="grid">${related.map(TB.productCard).join('')}</div>` : ''}`;
+}
+</script>
+</body>
+</html>
