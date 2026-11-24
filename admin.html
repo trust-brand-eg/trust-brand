@@ -6,10 +6,23 @@
 <title>ترست براند | لوحة التحكم</title>
 <link rel="icon" href="logo.svg">
 <link rel="stylesheet" href="styles.css">
+<style>
+.tabs{flex-wrap:wrap}
+.tabs button .cnt{display:inline-block;min-width:18px;padding:0 5px;margin-inline-start:5px;border-radius:9px;background:#E53935;color:#fff;font-size:11px;line-height:18px}
+.alert-row{display:flex;gap:10px;align-items:center;padding:10px 12px;border-radius:9px;margin-bottom:8px;background:#fff;border:1px solid var(--line)}
+.alert-row.warn{border-color:#f0c36d;background:#fff8e6}.alert-row.bad{border-color:#f1a3a0;background:#fff0ef}.alert-row.ok{border-color:#a8dcb9;background:#effaf2}
+.admin-table input[type=text],.admin-table input[type=number],.admin-table select{padding:5px;border:1px solid var(--line);border-radius:6px;max-width:130px}
+.admin-table td{vertical-align:top}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+.toolbar input,.toolbar select{padding:7px;border:1px solid var(--line);border-radius:8px}
+.tbl-wrap{overflow-x:auto}
+.mini{font-size:12px}
+.toast-ok{position:fixed;bottom:18px;inset-inline-start:18px;background:#17365D;color:#fff;padding:10px 16px;border-radius:9px;z-index:99}
+</style>
 </head>
 <body>
 <div id="siteHeader"></div>
-<main class="container" id="main"></main>
+<main class="container" id="main"><p class="muted">...</p></main>
 <div id="siteFooter"></div>
 
 <script src="imgs1.js"></script><script src="imgs2.js"></script><script src="imgs3.js"></script>
@@ -18,53 +31,278 @@
 <script src="store.js"></script><script src="rail.js"></script>
 <script>
 TB.mount('');
-const OWNER = { name: 'Islam Shoman', email: 'islamshowman1@gmail.com' };
-let tab = 'dash';
-let authed = false;
-async function sha(s) {
-  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('tb-salt:' + s));
-  return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('');
+const ar = TB.lang() === 'ar';
+const L = (a, e) => ar ? a : e;
+const ST = ['new', 'confirmed', 'packed', 'shipped', 'delivered', 'cancelled'];
+const STL = { new: L('جديد', 'New'), confirmed: L('تم التأكيد', 'Confirmed'), packed: L('جاهز للشحن', 'Ready to ship'), shipped: L('مع شركة الشحن', 'Handed to courier'), delivered: L('تم التسليم', 'Delivered'), cancelled: L('ملغي', 'Cancelled') };
+const GOVS = TB_STRINGS.ar.governates;
+const GOVL = (g) => { const i = GOVS.indexOf(g); return i >= 0 ? TB.t('governates')[i] : g; };
+const esc = TB.esc;
+const D = { products: [], costs: {}, orders: [], staff: [], couriers: [], rules: [], inquiries: [] };
+let tab = 'dash', filterStatus = '', lastNew = null, notifyOn = false;
+const main = document.getElementById('main');
+
+function toast(msg) { const t = document.createElement('div'); t.className = 'toast-ok'; t.textContent = msg; document.body.appendChild(t); setTimeout(() => t.remove(), 1800); }
+function fail(e) { alert(L('تعذر الحفظ: ', 'Could not save: ') + (e && e.message ? e.message : e)); }
+
+/* ---------- login ---------- */
+function loginView(msg) {
+  main.innerHTML = `<div class="panel admin-login">
+    <h2>${L('لوحة تحكم ترست براند', 'Trust Brand admin')}</h2>
+    <p class="muted small">${L('الدخول للمالك فقط. اكتب بريدك الإلكتروني وسنرسل لك رابط دخول.', 'Owner only. Enter your email and we send you a sign-in link.')}</p>
+    ${msg ? `<p class="stock in">${msg}</p>` : ''}
+    <form onsubmit="event.preventDefault(); sendLink(this);">
+      <input type="email" name="e" required placeholder="${L('البريد الإلكتروني', 'Email')}" style="width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;margin-bottom:10px">
+      <button class="btn btn-primary btn-block">${L('أرسل رابط الدخول', 'Send sign-in link')}</button>
+    </form>
+    <p class="field-error" id="linkErr" hidden></p>
+  </div>`;
 }
-function guard() { return authed; }
-function ownerBanner() {
-  return `<p class="muted small">${TB.lang()==='ar'?'المالك':'Owner'}: <strong>${OWNER.name}</strong> · ${OWNER.email}</p>`;
-}
-function renderLogin() {
-  const first = !TB_LS.getItem('tb_owner_hash');
-  const ar = TB.lang() === 'ar';
-  document.getElementById('main').innerHTML = `
-    <div class="panel admin-login">
-      <h2>${TB.t('adminTitle')}</h2>
-      ${ownerBanner()}
-      <p class="muted small">${first
-        ? (ar ? 'أول مرة: اختر كلمة مرور خاصة بك (8 أحرف على الأقل). تُحفظ مشفرة في هذا المتصفح فقط.' : 'First time: choose your own passcode (8+ characters). It is stored hashed in this browser only.')
-        : (ar ? 'أدخل كلمة المرور الخاصة بك.' : 'Enter your passcode.')}</p>
-      <form onsubmit="event.preventDefault(); tryPass(this.pass.value);">
-        <input type="password" name="pass" placeholder="${TB.t('adminPass')}" style="width:100%;padding:11px;border:1px solid var(--line);border-radius:9px;margin-bottom:10px">
-        <button class="btn btn-primary btn-block">${first ? (ar ? 'تعيين ودخول' : 'Set and enter') : TB.t('enter')}</button>
-      </form>
-      <p class="field-error" id="passErr" hidden>${TB.t('wrongPass')}</p>
-    </div>`;
-}
-async function tryPass(v) {
-  const stored = TB_LS.getItem('tb_owner_hash');
-  if (!stored) {
-    if (v.length < 8) { const e = document.getElementById('passErr'); e.textContent = TB.lang()==='ar'?'8 أحرف على الأقل':'At least 8 characters'; e.hidden = false; return; }
-    TB_LS.setItem('tb_owner_hash', await sha(v)); authed = true; render();
-  } else if (await sha(v) === stored) { authed = true; render(); }
-  else document.getElementById('passErr').hidden = false;
-}
-function exportData() {
-  const data = JSON.stringify({ products: TB.products(), orders: TB.orders() }, null, 1);
-  const el = document.getElementById('exportBox'); el.value = data; el.hidden = false; el.select();
-}
-function importData() {
+async function sendLink(f) {
+  const err = document.getElementById('linkErr'); err.hidden = true;
   try {
-    const d = JSON.parse(document.getElementById('exportBox').value);
-    if (Array.isArray(d.products)) TB.saveProducts(d.products);
-    if (Array.isArray(d.orders)) TB.saveOrders(d.orders);
-    render();
-  } catch (e) { alert('Invalid data'); }
+    await SB.emailLink(f.e.value.trim(), location.origin + location.pathname);
+    loginView(L('تم الإرسال. افتح الرابط من بريدك على نفس هذا الجهاز.', 'Sent. Open the link from your email on this device.'));
+  } catch (e) { err.textContent = L('تعذر الإرسال. تأكد من البريد وحاول بعد قليل.', 'Could not send. Check the email and try again shortly.'); err.hidden = false; }
+}
+async function start() {
+  await SB.ready;
+  const acct = TB.account();
+  if (!acct) return loginView();
+  let isAdmin = false;
+  try { const r = await SB.api('GET', 'admins?select=email'); isAdmin = r.length > 0; } catch (e) { isAdmin = false; }
+  if (!isAdmin) {
+    main.innerHTML = `<div class="panel admin-login"><h2>${L('هذا الحساب ليس مدير المتجر', 'This account is not a store admin')}</h2><p class="muted">${esc(acct.email)}</p><button class="btn btn-ghost" onclick="TB.signOut();location.reload()">${TB.t('signOut')}</button></div>`;
+    return;
+  }
+  await loadAll();
+  lastNew = D.orders.filter(o => o.status === 'new').length;
+  render();
+  setInterval(poll, 30000);
+}
+async function loadAll() {
+  const [products, costs, orders, staff, couriers, rules, inquiries] = await Promise.all([
+    SB.api('GET', 'products?select=*&order=sort'),
+    SB.api('GET', 'product_costs?select=*'),
+    SB.api('GET', 'orders?select=*&order=created_at.desc&limit=500'),
+    SB.api('GET', 'staff?select=*&order=name'),
+    SB.api('GET', 'couriers?select=*&order=name'),
+    SB.api('GET', 'routing_rules?select=*&order=gov'),
+    SB.api('GET', 'inquiries?select=*&order=created_at.desc&limit=100')
+  ]);
+  D.products = products; D.costs = {}; costs.forEach(c => D.costs[c.product_id] = c.cost == null ? null : Number(c.cost));
+  D.orders = orders; D.staff = staff; D.couriers = couriers; D.rules = rules; D.inquiries = inquiries;
+}
+async function poll() {
+  try {
+    const orders = await SB.api('GET', 'orders?select=*&order=created_at.desc&limit=500');
+    const products = await SB.api('GET', 'products?select=*&order=sort');
+    D.orders = orders; D.products = products;
+    const n = orders.filter(o => o.status === 'new').length;
+    if (lastNew !== null && n > lastNew) notifyNew(n - lastNew);
+    lastNew = n;
+    if (!document.activeElement || !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) render();
+  } catch (e) {}
+}
+function notifyNew(k) {
+  try { const c = new (window.AudioContext || window.webkitAudioContext)(); const o = c.createOscillator(); o.connect(c.destination); o.frequency.value = 880; o.start(); setTimeout(() => { o.stop(); c.close(); }, 350); } catch (e) {}
+  toast(L('طلب جديد: ' + k, 'New orders: ' + k));
+  try { if (notifyOn && window.Notification && Notification.permission === 'granted') new Notification('Trust Brand', { body: L('وصل طلب جديد', 'New order received') }); } catch (e) {}
+}
+
+/* ---------- helpers ---------- */
+const prodName = p => ar ? p.ar : p.en;
+const pById = id => D.products.find(p => p.id === String(id).split('~')[0]);
+const fmt = n => TB.fmt(n);
+const money = n => n == null ? '-' : fmt(Math.round(n * 100) / 100);
+function opts(list, sel, blank) { return (blank !== undefined ? `<option value="">${blank}</option>` : '') + list.map(x => { const v = Array.isArray(x) ? x[0] : x, l = Array.isArray(x) ? x[1] : x; return `<option value="${esc(v)}" ${String(v) === String(sel) ? 'selected' : ''}>${esc(l)}</option>`; }).join(''); }
+function itemCost(it) { if (it.cost != null) return Number(it.cost); const c = D.costs[String(it.id).split('~')[0]]; return c == null ? null : c; }
+function orderProfit(o) {
+  let profit = 0, known = true, cost = 0;
+  (o.items || []).forEach(it => { const c = itemCost(it); if (c == null) known = false; else { profit += it.qty * (it.price - c); cost += it.qty * c; } });
+  return { profit, cost, known };
+}
+const active = o => o.status !== 'cancelled';
+async function patchOrder(id, obj, reloadProducts) {
+  try {
+    await SB.api('PATCH', 'orders?id=eq.' + id, obj, 'return=minimal');
+    const o = D.orders.find(x => x.id === id); Object.assign(o, obj);
+    if (reloadProducts) { D.products = await SB.api('GET', 'products?select=*&order=sort'); TB_LS.removeItem('tb_pcache_v1'); }
+    render(); toast(L('تم الحفظ', 'Saved'));
+  } catch (e) { fail(e); }
+}
+function alertsList() {
+  const A = [];
+  const nNew = D.orders.filter(o => o.status === 'new').length;
+  if (nNew) A.push(['bad', L(`${nNew} طلب جديد ينتظر التأكيد`, `${nNew} new order(s) waiting for confirmation`), 'orders']);
+  const un = D.orders.filter(o => active(o) && o.status !== 'delivered' && !o.assigned_to).length;
+  if (un) A.push(['warn', L(`${un} طلب بدون مسؤول`, `${un} order(s) not assigned`), 'assign']);
+  const nr = D.orders.filter(o => active(o) && o.status !== 'delivered' && !o.route).length;
+  if (nr) A.push(['warn', L(`${nr} طلب بدون توجيه`, `${nr} order(s) not routed`), 'routing']);
+  const pk = D.orders.filter(o => o.status === 'packed').length;
+  if (pk) A.push(['warn', L(`${pk} طلب جاهز ينتظر التسليم لشركة الشحن`, `${pk} order(s) ready, waiting for courier handoff`), 'shipping']);
+  D.products.filter(p => p.active && p.stock === 0).forEach(p => A.push(['bad', L('نفد المخزون: ', 'Out of stock: ') + prodName(p), 'stock']));
+  D.products.filter(p => p.active && p.stock > 0 && p.stock <= p.low_stock).forEach(p => A.push(['warn', L(`مخزون منخفض: ${prodName(p)} (${p.stock})`, `Low stock: ${prodName(p)} (${p.stock})`), 'stock']));
+  const nc = D.products.filter(p => p.active && D.costs[p.id] == null).length;
+  if (nc) A.push(['warn', L(`${nc} منتج بدون سعر تكلفة (دراسة الربح ناقصة)`, `${nc} product(s) without a cost price (profit study incomplete)`), 'pricing']);
+  return A;
+}
+
+/* ---------- views ---------- */
+function vDash() {
+  const act = D.orders.filter(active);
+  const revenue = act.reduce((s, o) => s + Number(o.total), 0);
+  const profit = act.reduce((s, o) => s + orderProfit(o).profit, 0);
+  const A = alertsList();
+  return `<div class="stat-grid">
+    <div class="stat"><div class="num">${D.orders.length}</div><div class="lbl">${L('كل الطلبات', 'All orders')}</div></div>
+    <div class="stat"><div class="num">${D.orders.filter(o => o.status === 'new').length}</div><div class="lbl">${L('طلبات جديدة', 'New orders')}</div></div>
+    <div class="stat"><div class="num">${fmt(revenue)}</div><div class="lbl">${L('الإيراد', 'Revenue')}</div></div>
+    <div class="stat"><div class="num">${fmt(Math.round(profit))}</div><div class="lbl">${L('الربح التقديري (دون الشحن)', 'Estimated profit (excl. shipping)')}</div></div>
+    <div class="stat"><div class="num">${D.products.filter(p => p.active && p.stock <= p.low_stock).length}</div><div class="lbl">${L('منتجات منخفضة المخزون', 'Low-stock products')}</div></div>
+  </div>
+  <h3>${L('التنبيهات', 'Alerts')}</h3>
+  ${A.length ? A.map(a => `<div class="alert-row ${a[0]}"><span style="flex:1">${esc(a[1])}</span><button class="mini-btn" onclick="go('${a[2]}')">${L('فتح', 'Open')}</button></div>`).join('') : `<div class="alert-row ok">${L('كل شيء تمام', 'All clear')}</div>`}`;
+}
+function ordersTable(list, cols) {
+  if (!list.length) return `<div class="panel empty-state"><div class="big">📦</div><p class="muted">${TB.t('noOrders')}</p></div>`;
+  return `<div class="tbl-wrap"><table class="admin-table"><thead><tr><th>${L('الطلب', 'Order')}</th><th>${L('العميل', 'Customer')}</th><th>${L('المنتجات', 'Items')}</th><th>${L('الإجمالي', 'Total')}</th>${cols.map(c => `<th>${c.h}</th>`).join('')}</tr></thead><tbody>
+  ${list.map(o => `<tr${o.status === 'new' ? ' style="background:#fff8e6"' : ''}>
+    <td><strong>${o.number}</strong><br><span class="muted small">${new Date(o.created_at).toLocaleString(ar ? 'ar-EG' : 'en-EG')}</span></td>
+    <td>${esc(o.customer.name)}<br><span class="muted small" dir="ltr">${esc(o.customer.phone)}</span><br><span class="muted small">${esc(GOVL(o.customer.gov))} - ${esc(o.customer.address)}</span></td>
+    <td>${o.items.map(i => `${i.qty}× ${esc(ar ? i.name_ar : i.name_en)}`).join('<br>')}</td>
+    <td><strong>${fmt(o.total)}</strong><br><span class="muted small">${L('الدفع عند الاستلام', 'Cash on delivery')}</span></td>
+    ${cols.map(c => `<td>${c.f(o)}</td>`).join('')}</tr>`).join('')}
+  </tbody></table></div>`;
+}
+const statusSel = o => `<span class="chip ${o.status}">${STL[o.status]}</span><br><select onchange="patchOrder('${o.id}',{status:this.value},true)">${opts(ST.map(s => [s, STL[s]]), o.status)}</select>`;
+function vOrders() {
+  const list = D.orders.filter(o => !filterStatus || o.status === filterStatus);
+  return `<div class="toolbar"><label>${L('الحالة', 'Status')}</label><select onchange="filterStatus=this.value;render()">${opts(ST.map(s => [s, STL[s]]), filterStatus, L('الكل', 'All'))}</select><button class="btn btn-ghost" onclick="poll()">${L('تحديث', 'Refresh')}</button></div>`
+    + ordersTable(list, [{ h: L('الحالة', 'Status'), f: statusSel }, { h: L('ملاحظات', 'Notes'), f: o => `<input type="text" value="${esc(o.notes || '')}" onchange="patchOrder('${o.id}',{notes:this.value})">` }]);
+}
+function routeNames() { return [...new Set(D.rules.map(r => r.route))]; }
+function vRouting() {
+  const rn = routeNames();
+  return `<p class="muted small">${L('قواعد التوجيه: لكل محافظة، اختر جهة التجهيز. الطلبات الجديدة تُوجَّه تلقائيًا حسب القاعدة.', 'Routing rules: pick the fulfilment point for each governorate. New orders are routed automatically by these rules.')}</p>
+  <form class="toolbar" onsubmit="event.preventDefault();addRoute(this)"><input name="route" required placeholder="${L('اسم جهة التجهيز (مثال: فرع الإسكندرية)', 'Fulfilment point name')}"><select name="gov" multiple size="4">${GOVS.map(g => `<option value="${esc(g)}">${esc(GOVL(g))}</option>`).join('')}</select><button class="btn btn-primary">${L('حفظ القاعدة للمحافظات المختارة', 'Save rule for selected governorates')}</button></form>
+  <div class="tbl-wrap"><table class="admin-table"><thead><tr><th>${L('المحافظة', 'Governorate')}</th><th>${L('جهة التجهيز', 'Route')}</th><th></th></tr></thead><tbody>
+  ${D.rules.map(r => `<tr><td>${esc(GOVL(r.gov))}</td><td>${esc(r.route)}</td><td><button class="mini-btn danger" onclick="delRule('${esc(r.gov)}')">${TB.t('del')}</button></td></tr>`).join('') || `<tr><td colspan="3" class="muted">${L('لا توجد قواعد بعد', 'No rules yet')}</td></tr>`}</tbody></table></div>
+  <div class="toolbar"><button class="btn btn-ghost" onclick="autoRoute()">${L('توجيه الطلبات غير الموجهة حسب القواعد', 'Route unrouted orders by the rules')}</button></div>
+  <h3>${L('توجيه الطلبات', 'Order routing')}</h3>`
+  + ordersTable(D.orders.filter(o => active(o) && o.status !== 'delivered'), [{ h: L('جهة التجهيز', 'Route'), f: o => `<select onchange="patchOrder('${o.id}',{route:this.value||null})">${opts(rn, o.route, L('غير موجه', 'Unrouted'))}</select>` }]);
+}
+async function addRoute(f) {
+  const govs = [...f.gov.selectedOptions].map(o => o.value); if (!govs.length) return alert(L('اختر محافظة واحدة على الأقل', 'Select at least one governorate'));
+  try { await SB.api('POST', 'routing_rules', govs.map(g => ({ gov: g, route: f.route.value.trim() })), 'resolution=merge-duplicates,return=minimal'); D.rules = await SB.api('GET', 'routing_rules?select=*&order=gov'); render(); } catch (e) { fail(e); }
+}
+async function delRule(g) { try { await SB.api('DELETE', 'routing_rules?gov=eq.' + encodeURIComponent(g)); D.rules = D.rules.filter(r => r.gov !== g); render(); } catch (e) { fail(e); } }
+async function autoRoute() {
+  try {
+    for (const o of D.orders.filter(o => active(o) && !o.route)) { const r = D.rules.find(r => r.gov === o.customer.gov); if (r) { await SB.api('PATCH', 'orders?id=eq.' + o.id, { route: r.route }, 'return=minimal'); o.route = r.route; } }
+    render(); toast(L('تم التوجيه', 'Routed'));
+  } catch (e) { fail(e); }
+}
+async function saveProd(id, obj, noRender) {
+  try {
+    await SB.api('PATCH', 'products?id=eq.' + encodeURIComponent(id), obj, 'return=minimal');
+    Object.assign(D.products.find(p => p.id === id), obj); TB_LS.removeItem('tb_pcache_v1');
+    if (!noRender) render(); toast(L('تم الحفظ', 'Saved'));
+  } catch (e) { fail(e); }
+}
+function vStock() {
+  const list = D.products.slice().sort((a, b) => a.stock - b.stock);
+  return `<p class="muted small">${L('المخزون يُخصم تلقائيًا عند الطلب ويُعاد عند إلغائه.', 'Stock is deducted automatically on order and restored when an order is cancelled.')}</p><div class="tbl-wrap"><table class="admin-table"><thead><tr><th>${L('المنتج', 'Product')}</th><th>SKU</th><th>${L('المخزون', 'In stock')}</th><th>${L('حد التنبيه', 'Alert at')}</th><th>${L('الحالة', 'Status')}</th><th></th></tr></thead><tbody>
+  ${list.map(p => { const cls = p.stock === 0 ? 'out' : (p.stock <= p.low_stock ? 'low' : 'ok'); const lbl = p.stock === 0 ? TB.t('outOfStock') : (p.stock <= p.low_stock ? TB.t('lowStock') : TB.t('inStock')); return `<tr>
+    <td><strong>${esc(prodName(p))}</strong>${p.active ? '' : ` <span class="muted small">(${L('مخفي', 'hidden')})</span>`}</td><td class="muted">${esc(p.sku)}</td>
+    <td><input type="number" min="0" value="${p.stock}" onchange="saveProd('${p.id}',{stock:Math.max(0,parseInt(this.value)||0)})"></td>
+    <td><input type="number" min="0" value="${p.low_stock}" onchange="saveProd('${p.id}',{low_stock:Math.max(0,parseInt(this.value)||0)})"></td>
+    <td><span class="chip ${cls}">${lbl}</span></td>
+    <td><button class="mini-btn" onclick="saveProd('${p.id}',{stock:${p.stock}+10})">+10</button> <button class="mini-btn" onclick="saveProd('${p.id}',{stock:${p.stock}+50})">+50</button></td></tr>`; }).join('')}</tbody></table></div>`;
+}
+async function saveCost(id, v) {
+  try {
+    if (v === '' || isNaN(Number(v))) { await SB.api('DELETE', 'product_costs?product_id=eq.' + encodeURIComponent(id)); D.costs[id] = null; }
+    else { await SB.api('POST', 'product_costs', { product_id: id, cost: Number(v) }, 'resolution=merge-duplicates,return=minimal'); D.costs[id] = Number(v); }
+    render(); toast(L('تم الحفظ', 'Saved'));
+  } catch (e) { fail(e); }
+}
+function vPricing() {
+  return `<p class="muted small">${L('سعر التكلفة يظهر لك فقط. اتركه فارغًا إذا لم تعرفه، ولن يُحسب ربح هذا المنتج.', 'Cost price is visible only to you. Leave blank if unknown; profit for that product is then not counted.')}</p>
+  <div class="toolbar"><label>${L('تغيير أسعار قسم بنسبة %', 'Change category prices by %')}</label><select id="bcat">${TB_CATEGORIES.map(c => `<option value="${c.id}">${esc(ar ? c.ar : c.en)}</option>`).join('')}</select><input id="bpct" type="number" step="0.5" placeholder="10 / -5" style="width:90px"><button class="btn btn-ghost" onclick="bulkPrice()">${L('تطبيق', 'Apply')}</button></div>
+  <div class="tbl-wrap"><table class="admin-table"><thead><tr><th>${L('المنتج', 'Product')}</th><th>${L('سعر البيع', 'Price')}</th><th>${L('السعر قبل الخصم', 'Old price')}</th><th>${L('التكلفة', 'Cost')}</th><th>${L('هامش الربح', 'Margin')}</th></tr></thead><tbody>
+  ${D.products.map(p => { const c = D.costs[p.id]; const m = c == null ? '-' : Math.round((p.price - c) / p.price * 100) + '% (' + fmt(p.price - c) + ')'; return `<tr><td><strong>${esc(prodName(p))}</strong></td>
+    <td><input type="number" min="1" value="${p.price}" onchange="saveProd('${p.id}',{price:Math.max(1,Number(this.value)||1)})"></td>
+    <td><input type="number" min="0" value="${p.old_price == null ? '' : p.old_price}" onchange="saveProd('${p.id}',{old_price:this.value===''?null:Number(this.value)})"></td>
+    <td><input type="number" min="0" value="${c == null ? '' : c}" onchange="saveCost('${p.id}',this.value)"></td><td>${m}</td></tr>`; }).join('')}</tbody></table></div>`;
+}
+async function bulkPrice() {
+  const cat = document.getElementById('bcat').value, pct = Number(document.getElementById('bpct').value);
+  if (!pct) return;
+  if (!confirm(L('تغيير الأسعار بنسبة ' + pct + '%؟', 'Change prices by ' + pct + '%?'))) return;
+  try { for (const p of D.products.filter(p => p.cat === cat)) await saveProd(p.id, { price: Math.max(1, Math.round(p.price * (1 + pct / 100))) }, true); render(); } catch (e) { fail(e); }
+}
+function vProfit() {
+  const act = D.orders.filter(active);
+  const per = {};
+  act.forEach(o => o.items.forEach(it => { const id = String(it.id).split('~')[0]; const x = per[id] || (per[id] = { id, units: 0, rev: 0, cost: 0, miss: false }); x.units += it.qty; x.rev += it.qty * it.price; const c = itemCost(it); if (c == null) x.miss = true; else x.cost += it.qty * c; }));
+  const tot = act.reduce((a, o) => { const p = orderProfit(o); a.rev += Number(o.subtotal); a.profit += p.profit; a.miss = a.miss || !p.known; return a; }, { rev: 0, profit: 0, miss: false });
+  return `<p class="muted small">${L('الربح = سعر البيع − التكلفة لكل قطعة (الشحن غير محسوب). الطلبات الملغاة لا تُحسب.', 'Profit = selling price − cost per unit (shipping not counted). Cancelled orders are excluded.')}</p>
+  <div class="stat-grid"><div class="stat"><div class="num">${fmt(tot.rev)}</div><div class="lbl">${L('مبيعات المنتجات', 'Product sales')}</div></div><div class="stat"><div class="num">${fmt(Math.round(tot.profit))}</div><div class="lbl">${L('الربح', 'Profit')}${tot.miss ? ' *' : ''}</div></div><div class="stat"><div class="num">${tot.rev ? Math.round(tot.profit / tot.rev * 100) + '%' : '-'}</div><div class="lbl">${L('الهامش', 'Margin')}</div></div></div>
+  ${tot.miss ? `<p class="field-error">* ${L('بعض المنتجات بلا تكلفة، فالربح الحقيقي قد يكون أقل. أدخل التكلفة في تبويب التسعير.', 'Some items have no cost, so real profit may differ. Enter costs in the Pricing tab.')}</p>` : ''}
+  <h3>${L('لكل منتج', 'Per product')}</h3><div class="tbl-wrap"><table class="admin-table"><thead><tr><th>${L('المنتج', 'Product')}</th><th>${L('الوحدات', 'Units')}</th><th>${L('المبيعات', 'Sales')}</th><th>${L('التكلفة', 'Cost')}</th><th>${L('الربح', 'Profit')}</th></tr></thead><tbody>
+  ${Object.values(per).map(x => { const p = pById(x.id); return `<tr><td>${esc(p ? prodName(p) : x.id)}</td><td>${x.units}</td><td>${fmt(x.rev)}</td><td>${x.miss ? L('ناقصة', 'missing') : fmt(x.cost)}</td><td>${x.miss ? '-' : fmt(x.rev - x.cost)}</td></tr>`; }).join('') || `<tr><td colspan="5" class="muted">${L('لا مبيعات بعد', 'No sales yet')}</td></tr>`}</tbody></table></div>
+  <h3>${L('لكل طلب', 'Per order')}</h3><div class="tbl-wrap"><table class="admin-table"><thead><tr><th>${L('الطلب', 'Order')}</th><th>${L('المبيعات', 'Sales')}</th><th>${L('التكلفة', 'Cost')}</th><th>${L('الربح', 'Profit')}</th></tr></thead><tbody>
+  ${act.map(o => { const p = orderProfit(o); return `<tr><td>${o.number}</td><td>${fmt(o.subtotal)}</td><td>${p.known ? fmt(p.cost) : L('ناقصة', 'missing')}</td><td>${p.known ? fmt(p.profit) : '-'}</td></tr>`; }).join('')}</tbody></table></div>`;
+}
+function vAssign() {
+  const names = D.staff.filter(s => s.active).map(s => s.name);
+  const counts = {}; D.orders.filter(o => active(o) && o.status !== 'delivered' && o.assigned_to).forEach(o => counts[o.assigned_to] = (counts[o.assigned_to] || 0) + 1);
+  return `<form class="toolbar" onsubmit="event.preventDefault();addStaff(this)"><input name="name" required placeholder="${L('اسم الموظف', 'Team member name')}"><input name="role" placeholder="${L('الدور (اختياري)', 'Role (optional)')}"><button class="btn btn-primary">${L('إضافة', 'Add')}</button></form>
+  <div class="toolbar">${D.staff.map(s => `<span class="chip">${esc(s.name)}${s.role ? ' · ' + esc(s.role) : ''} (${counts[s.name] || 0}) <a href="#" onclick="event.preventDefault();delStaff('${s.id}')">✕</a></span>`).join('') || `<span class="muted small">${L('أضف أعضاء الفريق أولًا', 'Add team members first')}</span>`}</div>
+  <div class="toolbar"><button class="btn btn-ghost" onclick="roundRobin()">${L('توزيع الطلبات غير المسندة بالتساوي', 'Spread unassigned orders evenly')}</button></div>`
+  + ordersTable(D.orders.filter(o => active(o) && o.status !== 'delivered'), [{ h: L('المسؤول', 'Assigned to'), f: o => `<select onchange="patchOrder('${o.id}',{assigned_to:this.value||null})">${opts(names, o.assigned_to, L('غير مسند', 'Unassigned'))}</select>` }, { h: L('الحالة', 'Status'), f: o => `<span class="chip ${o.status}">${STL[o.status]}</span>` }]);
+}
+async function addStaff(f) { try { await SB.api('POST', 'staff', { name: f.name.value.trim(), role: f.role.value.trim() || null }, 'return=minimal'); D.staff = await SB.api('GET', 'staff?select=*&order=name'); render(); } catch (e) { fail(e); } }
+async function delStaff(id) { if (!confirm('?')) return; try { await SB.api('DELETE', 'staff?id=eq.' + id); D.staff = D.staff.filter(s => s.id !== id); render(); } catch (e) { fail(e); } }
+async function roundRobin() {
+  const names = D.staff.filter(s => s.active).map(s => s.name); if (!names.length) return alert(L('أضف موظفين أولًا', 'Add team members first'));
+  const load = {}; names.forEach(n => load[n] = D.orders.filter(o => active(o) && o.status !== 'delivered' && o.assigned_to === n).length);
+  try {
+    for (const o of D.orders.filter(o => active(o) && o.status !== 'delivered' && !o.assigned_to).reverse()) {
+      const n = names.sort((a, b) => load[a] - load[b])[0]; load[n]++;
+      await SB.api('PATCH', 'orders?id=eq.' + o.id, { assigned_to: n }, 'return=minimal'); o.assigned_to = n;
+    }
+    render(); toast(L('تم التوزيع', 'Assigned'));
+  } catch (e) { fail(e); }
+}
+function vAlerts() {
+  const A = alertsList();
+  return `<div class="toolbar"><button class="btn btn-ghost" onclick="enableNotify()">${L('تفعيل إشعارات المتصفح للطلبات الجديدة', 'Enable browser notifications for new orders')}</button><span class="muted small">${L('الصفحة تتحقق من الطلبات كل 30 ثانية وتصدر صوتًا عند وصول طلب جديد وهي مفتوحة.', 'This page checks every 30 seconds and beeps on a new order while it is open.')}</span></div>`
+    + (A.length ? A.map(a => `<div class="alert-row ${a[0]}"><span style="flex:1">${esc(a[1])}</span><button class="mini-btn" onclick="go('${a[2]}')">${L('فتح', 'Open')}</button></div>`).join('') : `<div class="alert-row ok">${L('لا توجد تنبيهات', 'No alerts')}</div>`);
+}
+async function enableNotify() { try { const r = await Notification.requestPermission(); notifyOn = r === 'granted'; toast(notifyOn ? L('تم التفعيل', 'Enabled') : L('لم يتم السماح', 'Not allowed')); } catch (e) { alert(L('المتصفح لا يدعم الإشعارات', 'Notifications not supported')); } }
+function vShipping() {
+  const cn = D.couriers.filter(c => c.active).map(c => c.name);
+  const queue = D.orders.filter(o => ['confirmed', 'packed', 'shipped'].includes(o.status));
+  return `<p class="muted small">${L('تسليم الطلبات لشركة الشحن: اختر الشركة ورقم التتبع ثم "تسليم". صدّر ملف CSV لإرساله لشركة الشحن. الربط المباشر بنظام شركة الشحن يُضاف بعد تحديد الشركة.', 'Hand orders to a courier: pick the courier and tracking number, then "Hand off". Export a CSV to send to the courier. Direct courier system integration is added once a courier is chosen.')}</p>
+  <form class="toolbar" onsubmit="event.preventDefault();addCourier(this)"><input name="name" required placeholder="${L('اسم شركة الشحن', 'Courier name')}"><button class="btn btn-primary">${L('إضافة', 'Add')}</button> ${D.couriers.map(c => `<span class="chip">${esc(c.name)} <a href="#" onclick="event.preventDefault();delCourier('${esc(c.name)}')">✕</a></span>`).join('')}</form>
+  <div class="toolbar"><button class="btn btn-ghost" onclick="exportCsv('packed')">${L('تصدير CSV للجاهز للشحن', 'Export CSV: ready to ship')}</button><button class="btn btn-ghost" onclick="exportCsv('all')">${L('تصدير CSV لكل الطلبات المفتوحة', 'Export CSV: all open orders')}</button></div>`
+  + ordersTable(queue, [
+    { h: L('الحالة', 'Status'), f: statusSel },
+    { h: L('الشحن', 'Shipping'), f: o => `<select onchange="patchOrder('${o.id}',{courier:this.value||null})">${opts(cn, o.courier, L('اختر الشركة', 'Pick courier'))}</select><br><input type="text" placeholder="${L('رقم التتبع', 'Tracking no.')}" value="${esc(o.tracking || '')}" onchange="patchOrder('${o.id}',{tracking:this.value||null})"><br>${o.status !== 'shipped' && o.status !== 'delivered' ? `<button class="mini-btn" onclick="handoff('${o.id}')">${L('تسليم لشركة الشحن', 'Hand off')}</button>` : ''}` }]);
+}
+async function addCourier(f) { try { await SB.api('POST', 'couriers', { name: f.name.value.trim() }, 'resolution=merge-duplicates,return=minimal'); D.couriers = await SB.api('GET', 'couriers?select=*&order=name'); render(); } catch (e) { fail(e); } }
+async function delCourier(n) { try { await SB.api('DELETE', 'couriers?name=eq.' + encodeURIComponent(n)); D.couriers = D.couriers.filter(c => c.name !== n); render(); } catch (e) { fail(e); } }
+function handoff(id) { const o = D.orders.find(x => x.id === id); if (!o.courier) return alert(L('اختر شركة الشحن أولًا', 'Pick a courier first')); patchOrder(id, { status: 'shipped' }); }
+function exportCsv(kind) {
+  const rows = D.orders.filter(o => kind === 'packed' ? o.status === 'packed' : ['confirmed', 'packed', 'shipped'].includes(o.status));
+  const q = v => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"';
+  const head = ['order', 'name', 'phone', 'governorate', 'address', 'items', 'cod_amount_egp', 'courier', 'tracking', 'notes'];
+  const lines = [head.join(',')].concat(rows.map(o => [o.number, o.customer.name, o.customer.phone, o.customer.gov, o.customer.address, o.items.map(i => i.qty + 'x ' + i.name_en).join(' | '), o.total, o.courier, o.tracking, o.notes].map(q).join(',')));
+  const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'orders-' + new Date().toISOString().slice(0, 10) + '.csv'; document.body.appendChild(a); a.click(); a.remove();
+  toast(rows.length + ' ' + L('طلب', 'orders'));
 }
 function readImage(file, cb) {
   const r = new FileReader();
@@ -75,159 +313,49 @@ function readImage(file, cb) {
   }; im.src = r.result; };
   r.readAsDataURL(file);
 }
-
-const STATUS_KEYS = ['new','confirmed','shipped','delivered','cancelled'];
-function statusLabel(s) { return TB.t('status' + s[0].toUpperCase() + s.slice(1)); }
-
-function render() {
-  if (!guard()) return renderLogin();
-  const prods = TB.products();
-  const orders = TB.orders();
-  const lang = TB.lang();
-  let body = '';
-
-  if (tab === 'dash') {
-    const revenue = orders.filter(o => o.status !== 'cancelled').reduce((s,o) => s + o.total, 0);
-    const low = prods.filter(p => p.stock <= 20);
-    body = `<div class="stat-grid">
-      <div class="stat"><div class="num">${prods.length}</div><div class="lbl">${TB.t('totalProducts')}</div></div>
-      <div class="stat"><div class="num">${orders.length}</div><div class="lbl">${TB.t('totalOrders')}</div></div>
-      <div class="stat"><div class="num">${TB.fmt(revenue)}</div><div class="lbl">${TB.t('revenue')}</div></div>
-      <div class="stat"><div class="num">${low.length}</div><div class="lbl">${TB.t('lowStockItems')}</div></div>
-    </div>`;
-  }
-
-  if (tab === 'dash') {
-    body += `<div class="panel" style="margin-top:16px"><h3 style="margin-top:0">${lang==='ar'?'نسخ احتياطي':'Backup / move data'}</h3>
-      <p class="muted small">${lang==='ar'?'بيانات المتجر محفوظة في هذا المتصفح فقط. صدّرها لتحتفظ بنسخة أو لتنقلها لجهاز آخر.':'Store data lives in this browser only. Export it to keep a copy or move it to another device.'}</p>
-      <button class="btn btn-ghost" onclick="exportData()">${lang==='ar'?'تصدير':'Export'}</button>
-      <button class="btn btn-ghost" onclick="importData()">${lang==='ar'?'استيراد (الصق البيانات بالأسفل)':'Import (paste data below)'}</button>
-      <textarea id="exportBox" rows="6" hidden style="width:100%;margin-top:10px"></textarea></div>`;
-  }
-
-  if (tab === 'products') {
-    body = `
-    <form class="add-form" onsubmit="event.preventDefault(); addProduct(this);">
-      <div><label>${TB.t('nameAr')}</label><input name="ar" required></div>
-      <div><label>${TB.t('nameEn')}</label><input name="en" required></div>
-      <div><label>${TB.t('category')}</label><select name="cat">${TB_CATEGORIES.map(c => `<option value="${c.id}">${lang==='ar'?c.ar:c.en}</option>`).join('')}</select></div>
-      <div><label>${TB.t('price')} (${TB.t('egp')})</label><input name="price" type="number" min="1" required></div>
-      <div><label>${TB.t('stock')}</label><input name="stock" type="number" min="0" required></div>
-      <div><label>${TB.lang()==='ar'?'صورة المنتج':'Product photo'}</label><input name="photo" type="file" accept="image/*"></div>
-      <div><button class="btn btn-primary">${TB.t('addProduct')}</button></div>
-    </form>
-    <table class="admin-table"><thead><tr>
-      <th></th><th>${TB.t('product')}</th><th>${TB.t('sku')}</th><th>${TB.t('category')}</th><th>${TB.t('price')}</th><th>${TB.t('stock')}</th><th>${TB.t('actions')}</th>
-    </tr></thead><tbody>
-      ${prods.map(p => `<tr>
-        <td><img src="${p.img}" alt="" onerror="this.style.visibility='hidden'"></td>
-        <td><strong>${TB.esc(lang==='ar'?p.ar:p.en)}</strong></td>
-        <td class="muted">${p.sku}</td>
-        <td>${TB.catName(p.cat)}</td>
-        <td><input type="number" value="${p.price}" min="1" onchange="upd('${p.id}','price',this.value)"></td>
-        <td><input type="number" value="${p.stock}" min="0" onchange="upd('${p.id}','stock',this.value)"></td>
-        <td><button class="mini-btn danger" onclick="delProduct('${p.id}')">${TB.t('del')}</button></td>
-      </tr>`).join('')}
-    </tbody></table>
-    <p class="muted small" id="savedNote" hidden>${TB.t('adminSaved')}</p>`;
-  }
-
-  if (tab === 'orders') {
-    body = orders.length === 0
-      ? `<div class="panel empty-state"><div class="big">📦</div><p class="muted">${TB.t('noOrders')}</p></div>`
-      : `<table class="admin-table"><thead><tr>
-        <th>${TB.t('order')}</th><th>${TB.t('customer')}</th><th>${TB.t('items')}</th><th>${TB.t('total')}</th><th>${TB.t('date')}</th><th>${TB.t('status')}</th>
-      </tr></thead><tbody>
-      ${orders.map(o => `<tr>
-        <td><strong>${o.number}</strong><br><span class="muted small">${o.customer.pay==='cod'?TB.t('payCod'):TB.t('payCard')}</span></td>
-        <td>${TB.esc(o.customer.name)}<br><span class="muted small" dir="ltr">${TB.esc(o.customer.phone)}</span><br><span class="muted small">${TB.esc(o.customer.gov)} - ${TB.esc(o.customer.address)}</span></td>
-        <td>${o.items.map(i => `${i.qty}× ${TB.esc(lang==='ar'?i.name_ar:i.name_en)}`).join('<br>')}</td>
-        <td><strong>${TB.fmt(o.total)}</strong></td>
-        <td class="muted small">${new Date(o.date).toLocaleString(lang==='ar'?'ar-EG':'en-EG')}</td>
-        <td>
-          <span class="chip ${o.status}">${statusLabel(o.status)}</span><br>
-          <select onchange="setStatus('${o.number}', this.value)" style="margin-top:6px;padding:5px;border-radius:6px;border:1px solid var(--line)">
-            ${STATUS_KEYS.map(s => `<option value="${s}" ${o.status===s?'selected':''}>${statusLabel(s)}</option>`).join('')}
-          </select>
-        </td>
-      </tr>`).join('')}
-      </tbody></table>`;
-  }
-
-  if (tab === 'stock') {
-    const sorted = prods.slice().sort((a,b) => a.stock - b.stock);
-    body = `<table class="admin-table"><thead><tr>
-      <th>${TB.t('product')}</th><th>${TB.t('sku')}</th><th>${TB.t('stock')}</th><th>${TB.t('status')}</th><th>${TB.t('actions')}</th>
-    </tr></thead><tbody>
-      ${sorted.map(p => {
-        const cls = p.stock === 0 ? 'out' : (p.stock <= 20 ? 'low' : 'ok');
-        const lbl = p.stock === 0 ? TB.t('outOfStock') : (p.stock <= 20 ? TB.t('lowStock') : TB.t('inStock'));
-        return `<tr>
-          <td><strong>${TB.esc(lang==='ar'?p.ar:p.en)}</strong></td>
-          <td class="muted">${p.sku}</td>
-          <td><input type="number" value="${p.stock}" min="0" onchange="upd('${p.id}','stock',this.value)"></td>
-          <td><span class="chip ${cls}">${lbl}</span></td>
-          <td><button class="mini-btn" onclick="upd('${p.id}','stock',${p.stock}+50)">+50</button></td>
-        </tr>`;
-      }).join('')}
-    </tbody></table>`;
-  }
-
-  document.getElementById('main').innerHTML = `
-    <div class="admin-top">
-      <h1>🛠 ${TB.t('adminTitle')}</h1>
-      <div style="display:flex;gap:8px">
-        <a class="btn btn-ghost" href="index.html">${TB.t('backToStore')}</a>
-        <button class="btn btn-ghost" onclick="if(confirm('Reset?')){TB_LS.removeItem('tb_products_v1');TB_LS.removeItem('tb_orders_v1');TB_LS.removeItem('tb_cart_v1');location.reload();}">${TB.t('resetDemo')}</button>
-        <button class="btn btn-ghost" onclick="location.reload()">${TB.t('signOut')}</button>
-      </div>
-    </div>
-    ${ownerBanner()}
-    <div class="tabs">
-      <button class="${tab==='dash'?'active':''}" onclick="tab='dash';render()">${TB.t('dashboard')}</button>
-      <button class="${tab==='products'?'active':''}" onclick="tab='products';render()">${TB.t('productsTab')}</button>
-      <button class="${tab==='orders'?'active':''}" onclick="tab='orders';render()">${TB.t('ordersTab')}</button>
-      <button class="${tab==='stock'?'active':''}" onclick="tab='stock';render()">${TB.t('stockTab')}</button>
-    </div>
-    ${body}`;
+function vProducts() {
+  return `<form class="add-form" onsubmit="event.preventDefault(); addProduct(this);">
+    <div><label>${TB.t('nameAr')}</label><input name="ar" required></div>
+    <div><label>${TB.t('nameEn')}</label><input name="en" required></div>
+    <div><label>${TB.t('category')}</label><select name="cat">${TB_CATEGORIES.map(c => `<option value="${c.id}">${esc(ar ? c.ar : c.en)}</option>`).join('')}</select></div>
+    <div><label>${TB.t('price')} (${TB.t('egp')})</label><input name="price" type="number" min="1" required></div>
+    <div><label>${TB.t('stock')}</label><input name="stock" type="number" min="0" required></div>
+    <div><label>${L('صورة المنتج', 'Product photo')}</label><input name="photo" type="file" accept="image/*"></div>
+    <div><button class="btn btn-primary">${TB.t('addProduct')}</button></div></form>
+  <div class="tbl-wrap"><table class="admin-table"><thead><tr><th></th><th>${L('الاسم', 'Name')}</th><th>${L('القسم', 'Category')}</th><th>${L('ظاهر في المتجر', 'Visible')}</th><th>${L('الصورة', 'Photo')}</th><th></th></tr></thead><tbody>
+  ${D.products.map(p => `<tr><td><img src="${esc(TB.img(p.img))}" alt="" style="width:46px;height:46px;object-fit:cover" onerror="this.style.visibility='hidden'"></td>
+    <td><input type="text" value="${esc(p.ar)}" onchange="saveProd('${p.id}',{ar:this.value})"><br><input type="text" value="${esc(p.en)}" onchange="saveProd('${p.id}',{en:this.value})"></td>
+    <td><select onchange="saveProd('${p.id}',{cat:this.value})">${opts(TB_CATEGORIES.map(c => [c.id, ar ? c.ar : c.en]), p.cat)}</select></td>
+    <td><input type="checkbox" ${p.active ? 'checked' : ''} onchange="saveProd('${p.id}',{active:this.checked})"></td>
+    <td><input type="file" accept="image/*" onchange="changePhoto('${p.id}',this)"></td>
+    <td><button class="mini-btn danger" onclick="delProduct('${p.id}')">${TB.t('del')}</button></td></tr>`).join('')}</tbody></table></div>`;
 }
-
-function upd(id, field, value) {
-  const prods = TB.products();
-  const p = prods.find(p => p.id === id);
-  if (!p) return;
-  p[field] = Math.max(field === 'price' ? 1 : 0, Number(value) || 0);
-  TB.saveProducts(prods);
-  render();
-  const note = document.getElementById('savedNote');
-  if (note) note.hidden = false;
-}
-function delProduct(id) {
-  if (!confirm('؟')) return;
-  TB.saveProducts(TB.products().filter(p => p.id !== id));
-  render();
-}
+function changePhoto(id, inp) { if (inp.files[0]) readImage(inp.files[0], url => saveProd(id, { img: url })); }
+async function delProduct(id) { if (!confirm(L('حذف المنتج نهائيًا؟ (يمكنك بدل ذلك إخفاءه)', 'Delete this product for good? (You can hide it instead)'))) return; try { await SB.api('DELETE', 'products?id=eq.' + encodeURIComponent(id)); D.products = D.products.filter(p => p.id !== id); TB_LS.removeItem('tb_pcache_v1'); render(); } catch (e) { fail(e); } }
 function addProduct(f) {
   const file = f.photo && f.photo.files[0];
   if (file && !f._img) { readImage(file, url => { f._img = url; addProduct(f); }); return; }
-  const prods = TB.products();
   const id = 'p-' + Date.now().toString(36);
-  prods.push({
-    id, sku: 'TB-' + (1000 + prods.length + 1), cat: f.cat.value,
-    ar: f.ar.value.trim(), en: f.en.value.trim(),
-    price: Number(f.price.value), old: null, rating: 0, reviews: 0,
-    stock: Number(f.stock.value), img: f._img || 'placeholder.jpg',
-    desc_ar: '', desc_en: '', specs: { ar: [], en: [] }
-  });
-  TB.saveProducts(prods);
-  render();
+  const row = { id, sku: 'TB-' + (3000 + D.products.length + 1), cat: f.cat.value, ar: f.ar.value.trim(), en: f.en.value.trim(), price: Number(f.price.value), stock: Number(f.stock.value), img: f._img || '', specs: { ar: [], en: [] }, sort: D.products.length + 1 };
+  SB.api('POST', 'products', row, 'return=minimal').then(() => { D.products.push(Object.assign({ active: true, low_stock: 20, old_price: null, rating: 0, reviews: 0, desc_ar: '', desc_en: '' }, row)); TB_LS.removeItem('tb_pcache_v1'); render(); toast(L('تمت الإضافة', 'Added')); }).catch(fail);
 }
-function setStatus(num, s) {
-  const orders = TB.orders();
-  const o = orders.find(o => o.number === num);
-  if (o) { o.status = s; TB.saveOrders(orders); render(); }
+function vMessages() {
+  return D.inquiries.length ? `<div class="tbl-wrap"><table class="admin-table"><thead><tr><th>${L('التاريخ', 'Date')}</th><th>${L('الاسم', 'Name')}</th><th>${L('وسيلة التواصل', 'Contact')}</th><th>${L('الموضوع', 'Topic')}</th><th>${L('الرسالة', 'Message')}</th></tr></thead><tbody>${D.inquiries.map(i => `<tr><td class="muted small">${new Date(i.created_at).toLocaleString(ar ? 'ar-EG' : 'en-EG')}</td><td>${esc(i.name)}</td><td dir="ltr">${esc(i.contact)}</td><td>${esc(i.topic)}</td><td>${esc(i.msg)}</td></tr>`).join('')}</tbody></table></div>` : `<div class="panel empty-state"><p class="muted">${L('لا رسائل', 'No messages')}</p></div>`;
 }
-render();
+
+const TABS = [['dash', L('الرئيسية', 'Overview'), vDash], ['orders', L('1. استقبال الطلبات', '1. Order intake'), vOrders], ['routing', L('2. توجيه الطلبات', '2. Routing'), vRouting], ['stock', L('3. المخزون', '3. Stock'), vStock], ['pricing', L('4. التسعير', '4. Pricing'), vPricing], ['profit', L('5. دراسة الربح', '5. Profit study'), vProfit], ['assign', L('7. توزيع الطلبات', '7. Assignment'), vAssign], ['alerts', L('8. التنبيهات', '8. Alerts'), vAlerts], ['shipping', L('9. الشحن', '9. Shipping'), vShipping], ['products', L('المنتجات', 'Products'), vProducts], ['messages', L('الرسائل', 'Messages'), vMessages]];
+function go(t) { tab = t; render(); window.scrollTo(0, 0); }
+function render() {
+  const A = alertsList(), nNew = D.orders.filter(o => o.status === 'new').length;
+  document.title = (nNew ? '(' + nNew + ') ' : '') + 'Trust Brand | Admin';
+  const cur = TABS.find(t => t[0] === tab) || TABS[0];
+  main.innerHTML = `<div class="admin-top"><h1>🛠 ${L('لوحة تحكم الشركة', 'Company dashboard')}</h1>
+    <div style="display:flex;gap:8px"><a class="btn btn-ghost" href="index.html">${TB.t('backToStore')}</a><button class="btn btn-ghost" onclick="TB.signOut();location.reload()">${TB.t('signOut')}</button></div></div>
+    <p class="muted small">${L('المالك', 'Owner')}: <strong>${esc(TB.account().name)}</strong> · ${esc(TB.account().email)}</p>
+    <div class="tabs">${TABS.map(t => `<button class="${tab === t[0] ? 'active' : ''}" onclick="go('${t[0]}')">${t[1]}${t[0] === 'orders' && nNew ? `<span class="cnt">${nNew}</span>` : ''}${t[0] === 'alerts' && A.length ? `<span class="cnt">${A.length}</span>` : ''}</button>`).join('')}</div>
+    <div id="view">${cur[2]()}</div>`;
+}
+start().catch(e => { main.innerHTML = `<div class="panel"><p class="field-error">${esc(e.message)}</p></div>`; });
 </script>
 </body>
 </html>
