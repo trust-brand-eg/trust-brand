@@ -41,8 +41,9 @@ document.getElementById('main').innerHTML = `
   <p id="inqDone" class="stock in" hidden>${ar?'تم حفظ استفسارك. شكرا لك!':'Your inquiry was saved. Thank you!'}</p>
  </div>
 </div>`;
-document.getElementById('inqForm').onsubmit = function(e){ e.preventDefault(); var f=new FormData(this), l; try{l=JSON.parse(TB_LS.getItem('tb_inquiries_v1'))||[]}catch(x){l=[]}
- l.push({name:f.get('name'),contact:f.get('contact'),topic:f.get('topic'),msg:f.get('msg'),at:new Date().toISOString()}); TB_LS.setItem('tb_inquiries_v1',JSON.stringify(l)); this.reset(); document.getElementById('inqDone').hidden=false; TB.kinetic(ar?['وصلتنا','رسالتك']:['Message','received']); };
+document.getElementById('inqForm').onsubmit = async function(e){ e.preventDefault(); var f=new FormData(this), form=this;
+ try { await SB.api('POST','inquiries',{name:f.get('name'),contact:f.get('contact'),topic:f.get('topic'),msg:f.get('msg')},'return=minimal'); form.reset(); document.getElementById('inqDone').hidden=false; TB.kinetic(ar?['وصلتنا','رسالتك']:['Message','received']); }
+ catch(x){ alert(ar?'تعذر إرسال الرسالة. حاول مرة أخرى.':'Could not send the message. Please try again.'); } };
 </script>
 </body>
 </html>
