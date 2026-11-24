@@ -4,10 +4,12 @@
     { id: 'scrub-blue',  type: 'top',   color: '#1E6FD9', en: 'Scrub Set, Trust Blue',  ar: 'طقم سكراب أزرق', price: 650, sizes: ['S','M','L','XL','XXL'], de: 'Soft stretch fabric, V-neck top and drawstring pants, two roomy pockets.', da: 'قماش مرن ناعم، بلوزة بياقة V وبنطلون برباط، جيبان واسعان.' },
     { id: 'scrub-green', type: 'top',   color: '#1FA855', en: 'Scrub Set, Trust Green', ar: 'طقم سكراب أخضر', price: 650, sizes: ['S','M','L','XL','XXL'], de: 'Breathable and easy to wash. Top and pants, built for long shifts.', da: 'قماش يتنفس وسهل الغسيل. بلوزة وبنطلون للورديات الطويلة.' },
     { id: 'scrub-red',   type: 'top',   color: '#E53935', en: 'Scrub Set, Trust Red',   ar: 'طقم سكراب أحمر', price: 650, sizes: ['S','M','L','XL','XXL'], de: 'Colour-fast fabric that keeps its shape wash after wash.', da: 'قماش ثابت اللون يحافظ على شكله بعد الغسيل.' },
-    { id: 'lab-coat',    type: 'coat',  color: '#F4F7FA', en: 'Classic Lab Coat',       ar: 'بالطو معمل كلاسيك', price: 720, sizes: ['S','M','L','XL','XXL'], de: 'Knee-length white coat, three pockets, snap buttons, wrinkle resistant.', da: 'بالطو أبيض بطول الركبة، ثلاثة جيوب، أزرار كبسولة، مقاوم للتجعد.' },
+    { id: 'labcoat-medical', cat: 'labcoats', type: 'coat',  color: '#F4F7FA', en: 'Medical Lab Coat',       ar: 'بالطو طبي (أطباء)', price: 720, sizes: ['S','M','L','XL','XXL'], de: 'Knee-length white coat for doctors and labs. Three pockets, snap buttons, wrinkle resistant.', da: 'بالطو أبيض بطول الركبة للأطباء والمعامل. ثلاثة جيوب وأزرار كبسولة ومقاوم للتجعد.' },
+    { id: 'labcoat-dental', cat: 'labcoats', type: 'dental', color: '#7FD6C8', en: 'Dental Lab Coat',        ar: 'بالطو أسنان', price: 540, sizes: ['S','M','L','XL'], de: 'Short, side-snap dental jacket in soft mint. Stain-resistant, easy to move in.', da: 'جاكيت أسنان قصير بأزرار جانبية بلون نعناعي ناعم. مقاوم للبقع وسهل الحركة.' },
     { id: 'scrub-pants', type: 'pants', color: '#17365D', en: 'Scrub Pants, Navy',      ar: 'بنطلون سكراب كحلي', price: 380, sizes: ['S','M','L','XL','XXL'], de: 'Elastic drawstring waist, cargo pocket, soft stretch.', da: 'وسط مطاطي برباط، جيب جانبي، قماش مرن.' },
     { id: 'surgical-cap',type: 'cap',   color: '#1FA855', en: 'Surgical Cap',           ar: 'طاقية جراحة', price: 90, sizes: ['One size'], de: 'Lightweight cotton cap with an adjustable back tie.', da: 'طاقية قطن خفيفة بخيط خلفي قابل للتعديل.' }
   ];
+  G.forEach(function (g) { if (!g.cat) g.cat = 'scrubs'; });
   var byId = {}; G.forEach(function (g) { byId[g.id] = g; });
   function shade(hex, a) { var n = parseInt(hex.slice(1), 16), r = n >> 16, g = (n >> 8) & 255, b = n & 255; function c(x) { return Math.max(0, Math.min(255, Math.round(x + a))); } return 'rgb(' + c(r) + ',' + c(g) + ',' + c(b) + ')'; }
   function art(g, hang) {
@@ -17,15 +19,51 @@
     if (g.type === 'top') s += '<g transform="translate(0,' + (y - 14) + ')"><path d="M38 14 L10 30 L20 56 L34 50 L34 130 H86 V50 L100 56 L110 30 L82 14 L60 40 Z" fill="' + c + '" stroke="' + st + '" stroke-width="2"/><path d="M38 14 L60 40 L82 14 L72 12 L60 26 L48 12 Z" fill="' + d + '"/><rect x="40" y="86" width="16" height="16" rx="3" fill="' + l + '" stroke="' + st + '"/><rect x="64" y="86" width="16" height="16" rx="3" fill="' + l + '" stroke="' + st + '"/></g>';
     if (g.type === 'coat') s += '<g transform="translate(0,' + (y - 14) + ')"><path d="M38 14 L8 32 L18 62 L32 56 L30 168 H90 L88 56 L102 62 L112 32 L82 14 L72 14 L60 46 L48 14 Z" fill="' + c + '" stroke="#9aa7b4" stroke-width="2"/><path d="M60 46 V168" stroke="#9aa7b4" stroke-width="2"/><path d="M48 14 L60 46 L72 14" fill="#e6ecf2" stroke="#9aa7b4" stroke-width="2"/><rect x="36" y="110" width="18" height="22" rx="3" fill="#fff" stroke="#9aa7b4"/><rect x="66" y="110" width="18" height="22" rx="3" fill="#fff" stroke="#9aa7b4"/><circle cx="60" cy="80" r="2.5" fill="#9aa7b4"/><circle cx="60" cy="102" r="2.5" fill="#9aa7b4"/><rect x="38" y="70" width="12" height="3" fill="#1E6FD9"/></g>';
     if (g.type === 'pants') s += '<g transform="translate(0,' + (y - 14) + ')"><path d="M32 14 H88 L92 150 H66 L60 60 L54 150 H28 Z" fill="' + c + '" stroke="' + st + '" stroke-width="2"/><rect x="32" y="14" width="56" height="10" fill="' + d + '"/><path d="M56 24 v18 M64 24 v18" stroke="' + l + '" stroke-width="2"/><rect x="34" y="70" width="12" height="20" rx="3" fill="' + l + '" opacity=".6"/></g>';
+    if (g.type === 'dental') s += '<g transform="translate(0,' + (y - 14) + ')"><path d="M40 14 L12 30 L20 58 L34 52 L34 118 H86 V52 L100 58 L108 30 L80 14 L60 36 Z" fill="' + c + '" stroke="' + st + '" stroke-width="2"/><path d="M40 14 L60 36 L80 14 L70 12 L60 24 L50 12 Z" fill="' + d + '"/><path d="M86 52 V118" stroke="' + d + '" stroke-width="2" stroke-dasharray="3 3"/><circle cx="86" cy="64" r="2.5" fill="' + d + '"/><circle cx="86" cy="84" r="2.5" fill="' + d + '"/><rect x="40" y="82" width="16" height="18" rx="3" fill="' + l + '" stroke="' + st + '"/></g>';
     if (g.type === 'cap') s += '<g transform="translate(0,' + (y + 10) + ')"><path d="M18 50 Q18 6 60 6 Q102 6 102 50 Q60 36 18 50 Z" fill="' + c + '" stroke="' + st + '" stroke-width="2"/><path d="M18 50 Q60 36 102 50 L96 58 Q60 46 24 58 Z" fill="' + d + '"/><path d="M40 16 Q60 10 80 16" stroke="' + l + '" stroke-width="3" fill="none"/></g>';
     return s;
   }
-  function svg(g, hang) { var h = g.type === 'coat' ? 215 : g.type === 'cap' ? 125 : g.type === 'pants' ? 195 : 175; return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 ' + h + '">' + art(g, hang) + '</svg>'; }
+  function svg(g, hang) { var h = g.type === 'coat' ? 215 : g.type === 'dental' ? 160 : g.type === 'cap' ? 125 : g.type === 'pants' ? 195 : 175; return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 ' + h + '">' + art(g, hang) + '</svg>'; }
   function uri(g) { var s = svg(g, false).replace('viewBox="0 0 120 ' + (0) + '"', 'viewBox="0 0 120 190"'); s = s.replace('<svg ', '<svg ').replace('</svg>', '</svg>'); return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 190"><rect width="120" height="190" fill="#eef3f7"/><g transform="translate(0,10)">' + art(g, false) + '</g></svg>'); }
 
+  function view(g, k) {
+    var bg = '<rect width="120" height="190" fill="#eef3f7"/>', body = '';
+    if (k === 0) body = '<g transform="translate(0,12)">' + art(g, false) + '</g>';
+    else if (k === 1) body = '<g transform="translate(120,12) scale(-1,1)">' + art(Object.assign({}, g), false) + '</g><path d="M60 40 V150" stroke="#0002" stroke-width="2" stroke-dasharray="4 4"/>';
+    else if (k === 2) body = '<g transform="translate(-50,-30) scale(1.8)">' + art(g, false) + '</g>';
+    else body = '<g transform="translate(0,12)">' + art(g, true) + '</g><text x="60" y="182" font-size="9" text-anchor="middle" fill="#5b6b78">' + g.sizes.join(' · ') + '</text>';
+    return 'data:image/svg+xml;utf8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 190">' + bg + body + '</svg>');
+  }
+  TB.gallery = function (p) { var g = byId[String(p.id).split('~')[0]]; return g ? [0, 1, 2, 3].map(function (k) { return view(g, k); }) : [p.img]; };
+  TB.enhancePdp = function (p) {
+    var root = document.querySelector('.pdp'); if (!root) return; var base = String(p.id).split('~')[0], g = byId[base], ar = TB.lang() === 'ar';
+    var box = root.querySelector('.pdp-img'), gal = TB.gallery(p);
+    if (gal.length > 1) {
+      box.innerHTML = '<img class="pdp-main" src="' + gal[0] + '" alt=""><div class="thumbs">' + gal.map(function (u, i) { return '<button type="button" class="thumb' + (i ? '' : ' on') + '" data-i="' + i + '"><img src="' + u + '" alt=""></button>'; }).join('') + '</div>';
+      box.querySelectorAll('.thumb').forEach(function (b) { b.onclick = function () { box.querySelector('.pdp-main').src = gal[b.dataset.i]; box.querySelectorAll('.thumb').forEach(function (x) { x.classList.toggle('on', x === b); }); }; });
+    }
+    if (g) {
+      var size = g.sizes[Math.min(1, g.sizes.length - 1)], row = document.createElement('div');
+      row.className = 'rp-sizes'; row.innerHTML = '<strong>' + (ar ? 'المقاس' : 'Size') + '</strong> ' + g.sizes.map(function (s) { return '<button type="button" class="chip' + (s === size ? ' on' : '') + '" data-s="' + s + '">' + s + '</button>'; }).join('');
+      var q = root.querySelector('.qty-row'); q.parentNode.insertBefore(row, q);
+      row.querySelectorAll('.chip').forEach(function (c) { c.onclick = function () { size = c.dataset.s; row.querySelectorAll('.chip').forEach(function (x) { x.classList.toggle('on', x === c); }); }; });
+      var add = root.querySelector('.pdp-info .btn-primary'); add.removeAttribute('onclick');
+      add.onclick = function () { TB.addToCart(base + '~' + size, Number(document.getElementById('qtySel').value)); TB.kinetic(ar ? ['تمت', 'الإضافة', 'إلى', 'سلتك'] : ['Added', 'to', 'your', 'cart']); };
+    }
+  };
+  // header: sign in, customer service, inquiries
+  if (typeof TB_STRINGS !== "undefined") { TB_STRINGS.ar.account = 'تسجيل الدخول'; TB_STRINGS.en.account = 'Sign in'; }
+  var oHeader = TB.header;
+  TB.header = function (a) {
+    var ar = TB.lang() === 'ar', h = oHeader.call(TB, a);
+    return h.replace('<a class="hbtn cart-btn"', '<a class="hbtn" href="contact.html">🎧 <span>' + (ar ? 'خدمة العملاء' : 'Support') + '</span></a><a class="hbtn" href="contact.html#inquiry">✉️ <span>' + (ar ? 'استفسار' : 'Inquiry') + '</span></a><a class="hbtn cart-btn"');
+  };
+  var oFooter = TB.footer;
+  TB.footer = function () { return oFooter.call(TB).replace('<a href="cart.html">', '<a href="contact.html">' + (TB.lang() === 'ar' ? 'خدمة العملاء والاستفسارات' : 'Customer service & inquiries') + '</a>\n          <a href="cart.html">'); };
+
   // catalog integration
-  if (window.TB_CATEGORIES && !TB_CATEGORIES.some(function (c) { return c.id === 'apparel'; })) TB_CATEGORIES.push({ id: 'apparel', en: 'Scrubs & Lab Coats', ar: 'ملابس طبية', icon: '🥼' });
-  function asProduct(g) { return { id: g.id, sku: 'TB-2' + (100 + G.indexOf(g)), cat: 'apparel', en: g.en, ar: g.ar, price: g.price, old: null, rating: 4.6, reviews: 40 + G.indexOf(g) * 7, stock: 30, img: 'g:' + g.id, desc_en: g.de, desc_ar: g.da, specs: { en: ['Sizes ' + g.sizes.join(', '), 'Demo item'], ar: ['المقاسات ' + g.sizes.join('، '), 'منتج تجريبي'] } }; }
+  if (typeof TB_CATEGORIES !== "undefined" && !TB_CATEGORIES.some(function (c) { return c.id === 'labcoats'; })) { TB_CATEGORIES.push({ id: 'labcoats', en: 'Lab Coats', ar: 'بالطو معمل', icon: '🥼' }); TB_CATEGORIES.push({ id: 'scrubs', en: 'Scrubs & Caps', ar: 'سكراب وطواقي', icon: '👕' }); }
+  function asProduct(g) { return { id: g.id, sku: 'TB-2' + (100 + G.indexOf(g)), cat: g.cat, en: g.en, ar: g.ar, price: g.price, old: null, rating: 4.6, reviews: 40 + G.indexOf(g) * 7, stock: 30, img: 'g:' + g.id, desc_en: g.de, desc_ar: g.da, specs: { en: ['Sizes ' + g.sizes.join(', '), 'Demo item'], ar: ['المقاسات ' + g.sizes.join('، '), 'منتج تجريبي'] } }; }
   var oImg = TB.img, oProducts = TB.products, oProduct = TB.product;
   TB.img = function (s) { if (typeof s === 'string' && s.indexOf('g:') === 0 && byId[s.slice(2)]) return uri(byId[s.slice(2)]); return oImg.call(TB, s); };
   TB.products = function () { var l = oProducts.call(TB); G.forEach(function (g) { if (!l.some(function (p) { return p.id === g.id; })) l.push(Object.assign(asProduct(g), { img: TB.img('g:' + g.id) })); }); return l; };
