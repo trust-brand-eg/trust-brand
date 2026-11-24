@@ -197,3 +197,37 @@ table.admin-table { width: 100%; border-collapse: collapse; background: #fff; bo
 }
 
 .brand-logo{height:44px;width:auto;background:#fff;border-radius:12px;padding:4px 12px;display:block}.footer-brand .brand-logo{height:40px}
+
+/* ---- hanging rail ---- */
+.rail-wrap{position:relative;padding-top:10px;background:linear-gradient(#fff,#f1f6f9);border-radius:16px;border:1px solid #e3eaef;overflow:hidden}
+.rail-bar{height:10px;margin:0 14px;border-radius:6px;background:linear-gradient(#cfd8df,#8a99a6);box-shadow:0 3px 6px #0002}
+.rail-row{display:flex;gap:8px;justify-content:space-around;overflow-x:auto;padding:0 12px 14px;margin-top:-4px;direction:ltr}
+.garment{background:none;border:0;cursor:pointer;display:flex;flex-direction:column;align-items:center;width:130px;flex:0 0 auto;padding:0;font:inherit;color:inherit}
+.garment .swing{display:block;width:110px;transform-origin:50% 8px;animation:idle 4s ease-in-out infinite;animation-delay:var(--d)}
+.garment .swing svg{width:100%;height:auto;filter:drop-shadow(0 6px 5px #0002)}
+.garment .swing.go{animation:swing 1.3s cubic-bezier(.3,.6,.4,1)}
+.garment:hover .swing{animation:swing .9s ease}
+.garment.sel .g-name{color:#1E6FD9;font-weight:700}
+.g-name{font-size:13px;margin-top:4px;text-align:center;direction:auto}
+@keyframes idle{0%,100%{transform:rotate(-1.6deg)}50%{transform:rotate(1.6deg)}}
+@keyframes swing{0%{transform:rotate(0)}15%{transform:rotate(16deg)}35%{transform:rotate(-12deg)}55%{transform:rotate(7deg)}75%{transform:rotate(-3deg)}100%{transform:rotate(0)}}
+.rail-panel{display:flex;gap:18px;align-items:center;margin-top:14px;padding:16px;border:1px solid #e3eaef;border-radius:16px;background:#fff}
+.rail-panel[hidden]{display:none}
+.rail-panel.in{animation:pin .35s ease}
+@keyframes pin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.rp-art{width:120px;flex:0 0 auto}.rp-art svg{width:100%;height:auto}
+.rp-info h3{margin:0 0 6px}.rp-info p{margin:0 0 10px;color:#5b6b78}
+.rp-sizes{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.chip{border:1.5px solid #c9d4dc;background:#fff;border-radius:999px;padding:6px 14px;cursor:pointer;font:inherit}
+.chip.on{background:#1E6FD9;border-color:#1E6FD9;color:#fff}
+.rp-buy{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+@media(max-width:600px){.rail-panel{flex-direction:column;text-align:start}.garment{width:112px}.garment .swing{width:96px}}
+/* ---- kinetic trust message ---- */
+#tbKin{position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:9999;display:flex;gap:10px;align-items:center;background:#fff;border-radius:999px;padding:12px 22px;box-shadow:0 10px 30px #0004;font-weight:700;font-size:18px;direction:ltr;animation:kin-in .4s ease}
+#tbKin.out{animation:kin-out .5s ease forwards}
+.kin-logo{font-family:'Pacifico',cursive,serif;font-size:26px;font-style:italic;letter-spacing:1px}
+.kin-w{opacity:0;display:inline-block;animation:kin-w .45s cubic-bezier(.2,.9,.3,1.4) forwards;color:#17365D}
+@keyframes kin-w{from{opacity:0;transform:translateY(14px) scale(.7)}to{opacity:1;transform:none}}
+@keyframes kin-in{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
+@keyframes kin-out{to{opacity:0;transform:translate(-50%,20px)}}
+@media(prefers-reduced-motion:reduce){.garment .swing,.garment:hover .swing,.garment .swing.go{animation:none}.kin-w{animation:none;opacity:1}#tbKin,#tbKin.out{animation:none}.rail-panel.in{animation:none}}
