@@ -248,3 +248,11 @@ table.admin-table { width: 100%; border-collapse: collapse; background: #fff; bo
 .cs-btns{display:flex;gap:10px;flex-wrap:wrap;margin:10px 0}
 html{scroll-behavior:smooth}*{-webkit-tap-highlight-color:transparent}
 .btn,.hbtn,.cat-tile,.card{transition:transform .12s ease,box-shadow .12s ease}.btn:active,.hbtn:active,.cat-tile:active{transform:scale(.96)}
+
+.stage3d{perspective:900px;position:relative;touch-action:pan-y;cursor:grab;background:#eef3f7;border-radius:12px;overflow:hidden}
+.stage3d .pdp-main{display:block;width:100%;max-height:480px;object-fit:contain;transform-style:preserve-3d;user-select:none}
+.nav{position:absolute;top:50%;transform:translateY(-50%);width:38px;height:38px;border-radius:50%;border:0;background:#fffc;font-size:24px;cursor:pointer;box-shadow:0 2px 8px #0003}
+.nav.prev{left:8px}.nav.next{right:8px}
+.credit{font-size:12px;color:#5b6b78;margin:8px 0 0}
+.det{margin-top:18px}.det table{width:100%;border-collapse:collapse}.det th{text-align:start;color:#5b6b78;font-weight:600;padding:8px 6px;border-bottom:1px solid #e3eaef;width:40%}.det td{padding:8px 6px;border-bottom:1px solid #e3eaef}
+.ph{color:#8a97a3;font-style:italic}
