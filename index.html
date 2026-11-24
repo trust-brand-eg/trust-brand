@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ترست براند | Trust Brand - مستلزمات طبية</title>
+<link rel="icon" href="logo.svg">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div id="siteHeader"></div>
+<main class="container">
+  <section class="hero" id="heroSection">
+    <div>
+      <h1 id="heroTitle"></h1>
+      <p id="heroSub"></p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <a href="#products" class="btn btn-primary btn-lg" id="heroShop"></a>
+        <a href="#deals" class="btn btn-ghost btn-lg" id="heroDeals"></a>
+      </div>
+      <div class="hero-perks" id="heroPerks"></div>
+    </div>
+    <div class="hero-img"><img src="" id="heroImg" alt="Trust Brand medical supplies"></div>
+  </section>
+
+  <section>
+    <div class="section-head"><h2 id="catTitle"></h2></div>
+    <div class="cat-grid" id="catGrid"></div>
+  </section>
+
+  <section id="deals">
+    <div class="section-head"><h2 id="dealsTitle"></h2></div>
+    <div class="grid" id="dealsGrid"></div>
+  </section>
+
+  <section id="products">
+    <div class="section-head"><h2 id="productsTitle"></h2><span class="muted" id="resultCount"></span></div>
+    <div class="shop-layout">
+      <aside class="filters" id="filtersPanel"></aside>
+      <div>
+        <div class="sort-row" id="sortRow"></div>
+        <div class="grid" id="productGrid"></div>
+      </div>
+    </div>
+  </section>
+</main>
+<div id="siteFooter"></div>
+
+<script src="imgs1.js"></script><script src="imgs2.js"></script><script src="imgs3.js"></script>
+<script src="data.js"></script>
+<script src="i18n.js"></script>
+<script src="store.js"></script>
+<script>
+TB.mount('home');
+document.getElementById('heroImg').src = TB.img('hero.jpg');
+
+const params = new URLSearchParams(location.search);
+let state = { q: params.get('q') || '', cat: params.get('cat') || '', min: '', max: '', sort: 'pop' };
+
+document.getElementById('heroTitle').textContent = TB.t('heroTitle');
+document.getElementById('heroSub').textContent = TB.t('heroSub');
+document.getElementById('heroShop').textContent = TB.t('shopNow');
+document.getElementById('heroDeals').textContent = TB.t('seeDeals');
+document.getElementById('heroPerks').innerHTML = ['freeShipping','cod','support'].map(k => `<span>${TB.t(k)}</span>`).join('');
+document.getElementById('catTitle').textContent = TB.t('categories');
+document.getElementById('dealsTitle').textContent = TB.t('dealsTitle');
+
+document.getElementById('catGrid').innerHTML = TB_CATEGORIES.map(c => `
+  <a class="cat-tile" href="index.html?cat=${c.id}"><span class="ico">${c.icon}</span>${TB.lang()==='ar'?c.ar:c.en}</a>`).join('');
+
+const deals = TB.products().filter(p => p.old);
+document.getElementById('dealsGrid').innerHTML = deals.map(TB.productCard).join('');
+
+function renderFilters() {
+  const cats = TB_CATEGORIES;
+  document.getElementById('filtersPanel').innerHTML = `
+    <h3>${TB.t('allCategories')}</h3>
+    <label><input type="radio" name="fcat" value="" ${state.cat===''?'checked':''}> ${TB.t('allCategories')}</label>
+    ${cats.map(c => `<label><input type="radio" name="fcat" value="${c.id}" ${state.cat===c.id?'checked':''}> ${TB.lang()==='ar'?c.ar:c.en}</label>`).join('')}
+    <div class="fgroup">
+      <h3>${TB.t('filterPrice')}</h3>
+      <input type="number" id="fmin" placeholder="0" min="0" value="${state.min}"> <span class="muted">${TB.t('to')}</span>
+      <input type="number" id="fmax" placeholder="∞" min="0" value="${state.max}">
+      <div style="margin-top:8px"><button class="btn btn-ghost" onclick="applyPrice()">${TB.t('apply')}</button></div>
+    </div>
+    <div class="fgroup"><button class="btn btn-ghost btn-block" onclick="clearFilters()">${TB.t('clearFilters')}</button></div>`;
+  document.querySelectorAll('input[name=fcat]').forEach(r => r.onchange = () => { state.cat = r.value; render(); });
+}
+function applyPrice() {
+  state.min = document.getElementById('fmin').value;
+  state.max = document.getElementById('fmax').value;
+  render();
+}
+function clearFilters() {
+  state = { q: '', cat: '', min: '', max: '', sort: 'pop' };
+  history.replaceState(null, '', 'index.html');
+  renderFilters(); render();
+}
+function renderSort() {
+  document.getElementById('sortRow').innerHTML = `
+    <label class="muted">${TB.t('sortBy')}</label>
+    <select id="sortSel">
+      <option value="pop">${TB.t('sortPop')}</option>
+      <option value="priceAsc">${TB.t('sortPriceAsc')}</option>
+      <option value="priceDesc">${TB.t('sortPriceDesc')}</option>
+      <option value="rating">${TB.t('sortRating')}</option>
+    </select>`;
+  const sel = document.getElementById('sortSel');
+  sel.value = state.sort;
+  sel.onchange = () => { state.sort = sel.value; render(); };
+}
+function filtered() {
+  let list = TB.products().slice();
+  if (state.q) {
+    const q = state.q.toLowerCase();
+    list = list.filter(p => p.en.toLowerCase().includes(q) || p.ar.includes(state.q) || p.sku.toLowerCase().includes(q));
+  }
+  if (state.cat) list = list.filter(p => p.cat === state.cat);
+  if (state.min !== '') list = list.filter(p => p.price >= Number(state.min));
+  if (state.max !== '') list = list.filter(p => p.price <= Number(state.max));
+  switch (state.sort) {
+    case 'priceAsc': list.sort((a,b) => a.price - b.price); break;
+    case 'priceDesc': list.sort((a,b) => b.price - a.price); break;
+    case 'rating': list.sort((a,b) => b.rating - a.rating); break;
+    default: list.sort((a,b) => b.reviews - a.reviews);
+  }
+  return list;
+}
+function render() {
+  const list = filtered();
+  document.getElementById('productsTitle').textContent =
+    state.q ? `${TB.t('resultsFor')} "${state.q}"` : (state.cat ? TB.catName(state.cat) : TB.t('products'));
+  const n = list.length;
+  document.getElementById('resultCount').textContent = `${n} ${n === 1 ? TB.t('itemSingular') : TB.t('itemPlural')}`;
+  document.getElementById('productGrid').innerHTML = n ? list.map(TB.productCard).join('') :
+    `<div class="panel empty-state" style="grid-column:1/-1"><div class="big">🔍</div><p>${TB.t('noResults')}</p></div>`;
+}
+renderFilters(); renderSort(); render();
+</script>
+</body>
+</html>
