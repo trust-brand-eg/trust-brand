@@ -1,4 +1,4 @@
-/* Trust Brand - original hanging rail + kinetic "Trust" messages. Own code and artwork. Demo only. */
+/* Trust Brand - original hanging rail + kinetic "Trust" messages. Own code and artwork. */
 (function () {
   var G = [
     { id: 'scrub-blue',  type: 'top',   color: '#1E6FD9', en: 'Scrub Set, Trust Blue',  ar: 'طقم سكراب أزرق', price: 650, sizes: ['S','M','L','XL','XXL'], de: 'Soft stretch fabric, V-neck top and drawstring pants, two roomy pockets.', da: 'قماش مرن ناعم، بلوزة بياقة V وبنطلون برباط، جيبان واسعان.' },
@@ -37,7 +37,7 @@
   TB.gallery = function (p) { var g = byId[String(p.id).split('~')[0]]; return g ? [0, 1, 2, 3].map(function (k) { return view(g, k); }) : [p.img]; };
   TB.enhancePdp = function (p) {
     var root = document.querySelector('.pdp'); if (!root) return; var base = String(p.id).split('~')[0], g = byId[base], ar = TB.lang() === 'ar';
-    var box = root.querySelector('.pdp-img'), gal = TB.gallery(p);
+    var box = root.querySelector('.pdp-img'), gal = TB.gallery(p); if (!g) { var hh = root.querySelector('h1'); if (hh && !root.querySelector('.trust-tag')) hh.insertAdjacentHTML('beforebegin', '<span class="trust-tag">Trust</span>'); }
     if (gal.length > 1) {
       box.innerHTML = '<img class="pdp-main" src="' + gal[0] + '" alt=""><div class="thumbs">' + gal.map(function (u, i) { return '<button type="button" class="thumb' + (i ? '' : ' on') + '" data-i="' + i + '"><img src="' + u + '" alt=""></button>'; }).join('') + '</div>';
       box.querySelectorAll('.thumb').forEach(function (b) { b.onclick = function () { box.querySelector('.pdp-main').src = gal[b.dataset.i]; box.querySelectorAll('.thumb').forEach(function (x) { x.classList.toggle('on', x === b); }); }; });
@@ -45,10 +45,10 @@
     if (g) {
       var size = g.sizes[Math.min(1, g.sizes.length - 1)], row = document.createElement('div');
       row.className = 'rp-sizes'; row.innerHTML = '<strong>' + (ar ? 'المقاس' : 'Size') + '</strong> ' + g.sizes.map(function (s) { return '<button type="button" class="chip' + (s === size ? ' on' : '') + '" data-s="' + s + '">' + s + '</button>'; }).join('');
-      var q = root.querySelector('.qty-row'); q.parentNode.insertBefore(row, q);
+      var q = root.querySelector('.qty-row'); var h1 = root.querySelector('h1'); if (h1 && !root.querySelector('.trust-tag')) h1.insertAdjacentHTML('beforebegin', '<span class="trust-tag">Trust</span>'); q.parentNode.insertBefore(row, q);
       row.querySelectorAll('.chip').forEach(function (c) { c.onclick = function () { size = c.dataset.s; row.querySelectorAll('.chip').forEach(function (x) { x.classList.toggle('on', x === c); }); }; });
       var add = root.querySelector('.pdp-info .btn-primary'); add.removeAttribute('onclick');
-      add.onclick = function () { TB.addToCart(base + '~' + size, Number(document.getElementById('qtySel').value)); TB.kinetic(ar ? ['تمت', 'الإضافة', 'إلى', 'سلتك'] : ['Added', 'to', 'your', 'cart']); };
+      add.onclick = function () { TB.fly(add); TB.addToCart(base + '~' + size, Number(document.getElementById('qtySel').value)); TB.kinetic(ar ? ['تمت', 'الإضافة', 'إلى', 'سلتك'] : ['Added', 'to', 'your', 'cart']); };
     }
   };
   // header: sign in, customer service, inquiries
@@ -61,9 +61,23 @@
   var oFooter = TB.footer;
   TB.footer = function () { return oFooter.call(TB).replace('<a href="cart.html">', '<a href="contact.html">' + (TB.lang() === 'ar' ? 'خدمة العملاء والاستفسارات' : 'Customer service & inquiries') + '</a>\n          <a href="cart.html">'); };
 
+  var oCard = TB.productCard;
+  TB.productCard = function (p) { return oCard.call(TB, p).replace('<div class="card-body">', '<div class="card-body"><span class="trust-tag">Trust</span>'); };
+  TB.fly = function (from) {
+    try {
+      var cart = document.querySelector('.cart-btn'); if (!cart || !from || !from.getBoundingClientRect || (window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches)) return;
+      var a = from.getBoundingClientRect(), b = cart.getBoundingClientRect(), d = document.createElement('div');
+      d.className = 'fly-dot'; d.textContent = 'Trust'; d.style.left = a.left + a.width / 2 - 28 + 'px'; d.style.top = a.top + a.height / 2 - 14 + 'px'; document.body.appendChild(d);
+      var dx = b.left + b.width / 2 - (a.left + a.width / 2), dy = b.top + b.height / 2 - (a.top + a.height / 2);
+      var an = d.animate([{ transform: 'translate(0,0) scale(1)', opacity: 1 }, { transform: 'translate(' + dx * 0.5 + 'px,' + (dy * 0.5 - 90) + 'px) scale(1.15) rotate(-8deg)', opacity: 1, offset: 0.55 }, { transform: 'translate(' + dx + 'px,' + dy + 'px) scale(.25)', opacity: 0.2 }], { duration: 750, easing: 'cubic-bezier(.4,.1,.3,1)' });
+      an.onfinish = function () { d.remove(); cart.classList.remove('bump'); void cart.offsetWidth; cart.classList.add('bump'); };
+    } catch (e) {}
+  };
+  var oAdd2 = TB.onAdd;
+  TB.onAdd = function (id, btn) { TB.fly(btn); oAdd2.call(TB, id, btn); };
   // catalog integration
   if (typeof TB_CATEGORIES !== "undefined" && !TB_CATEGORIES.some(function (c) { return c.id === 'labcoats'; })) { TB_CATEGORIES.push({ id: 'labcoats', en: 'Lab Coats', ar: 'بالطو معمل', icon: '🥼' }); TB_CATEGORIES.push({ id: 'scrubs', en: 'Scrubs & Caps', ar: 'سكراب وطواقي', icon: '👕' }); }
-  function asProduct(g) { return { id: g.id, sku: 'TB-2' + (100 + G.indexOf(g)), cat: g.cat, en: g.en, ar: g.ar, price: g.price, old: null, rating: 4.6, reviews: 40 + G.indexOf(g) * 7, stock: 30, img: 'g:' + g.id, desc_en: g.de, desc_ar: g.da, specs: { en: ['Sizes ' + g.sizes.join(', '), 'Demo item'], ar: ['المقاسات ' + g.sizes.join('، '), 'منتج تجريبي'] } }; }
+  function asProduct(g) { return { id: g.id, sku: 'TB-2' + (100 + G.indexOf(g)), cat: g.cat, en: g.en, ar: g.ar, price: g.price, old: null, rating: 4.6, reviews: 40 + G.indexOf(g) * 7, stock: 30, img: 'g:' + g.id, desc_en: g.de, desc_ar: g.da, specs: { en: ['Sizes ' + g.sizes.join(', '), 'Trust'], ar: ['المقاسات ' + g.sizes.join('، '), 'Trust'] } }; }
   var oImg = TB.img, oProducts = TB.products, oProduct = TB.product;
   TB.img = function (s) { if (typeof s === 'string' && s.indexOf('g:') === 0 && byId[s.slice(2)]) return uri(byId[s.slice(2)]); return oImg.call(TB, s); };
   TB.products = function () { var l = oProducts.call(TB); G.forEach(function (g) { if (!l.some(function (p) { return p.id === g.id; })) l.push(Object.assign(asProduct(g), { img: TB.img('g:' + g.id) })); }); return l; };
@@ -95,7 +109,7 @@
         panel.hidden = false; panel.classList.remove('in'); void panel.offsetWidth; panel.classList.add('in');
         panel.innerHTML = '<div class="rp-art">' + svg(g, false) + '</div><div class="rp-info"><h3>' + (ar ? g.ar : g.en) + '</h3><p>' + (ar ? g.da : g.de) + '</p><div class="rp-sizes">' + g.sizes.map(function (s) { return '<button type="button" class="chip' + (s === size ? ' on' : '') + '" data-s="' + s + '">' + s + '</button>'; }).join('') + '</div><div class="rp-buy"><strong>' + TB.fmt(g.price) + '</strong><button class="btn btn-primary" id="rpAdd">' + TB.t('addToCart') + '</button><a class="btn btn-ghost" href="product.html?id=' + g.id + '">' + (ar ? 'التفاصيل' : 'Details') + '</a></div></div>';
         panel.querySelectorAll('.chip').forEach(function (c) { c.onclick = function () { size = c.dataset.s; panel.querySelectorAll('.chip').forEach(function (x) { x.classList.toggle('on', x === c); }); }; });
-        panel.querySelector('#rpAdd').onclick = function () { TB.addToCart(g.id + '~' + size, 1); kinetic(ar ? ['تمت', 'الإضافة', 'إلى', 'سلتك'] : ['Added', 'to', 'your', 'cart']); };
+        panel.querySelector('#rpAdd').onclick = function () { TB.fly(this); TB.addToCart(g.id + '~' + size, 1); kinetic(ar ? ['تمت', 'الإضافة', 'إلى', 'سلتك'] : ['Added', 'to', 'your', 'cart']); };
       });
     });
   };
